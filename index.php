@@ -8,8 +8,8 @@
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
   <title>NUSH MECHANICAL &amp; FABRICATOR WORKS</title>
-  <meta content="" name="description">
-  <meta content="" name="keywords">
+  <meta content="NUSH MECHANICAL & FABRICATOR WORKS specializes in the design and manufacturing of hydraulic presses, cylinders, power packs, and provides machine fabrication services." name="description">
+  <meta content="hydraulic press, hydraulic cylinder, machine fabrication, NUSH MECHANICAL, fabricator works, Anil Sharma" name="keywords">
 
   <!-- Favicons -->
   <link href="images/Logo.png" rel="icon">
@@ -30,8 +30,7 @@
   <!-- Template Main CSS File -->
   <link href="assets/css/style.css" rel="stylesheet">
     <link href="assets/css/about.css" rel="stylesheet">
-    
- <script defer src="https://use.fontawesome.com/releases/v5.0.7/js/all.js"></script>    
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.1/css/all.min.css">
 
   <!-- =======================================================
@@ -50,7 +49,7 @@
 
       <!--<h1 class="logo"><a href="index.html">Dewi</a></h1>-->
       <!-- Uncomment below if you prefer to use an image logo -->
-      <a href="index.html" class="logo"><img src="images/Logo.png" alt="Logo" class="img-fluid" width="90px" height="50px"></a>
+      <a href="index.php" class="logo"><img src="images/Logo.png" alt="Logo" class="img-fluid" width="90px" height="50px"></a>
 
       <nav class="nav-menu d-none d-lg-block">
         <ul>
@@ -83,7 +82,9 @@
  
     <!-- whatsapp api-->
     <div id="whatsapp">
-    <a href="https://api.whatsapp.com/send?phone=+918600222111" class="float" target="_blank">
+    <!--<a href="https://api.whatsapp.com/send?phone=+918600222111" class="float" target="_blank">-->
+        <!--<a href="https://api.whatsapp.com/send?phone=+918600222111" class="float" target="_blank">-->
+            <a href="https://wa.me/+918600222111" class="float" target="_blank">
 <i class="fab fa-whatsapp my-float"></i>
 </a>
     </div>
@@ -144,11 +145,11 @@
           <div class="col-lg-6 pt-3 pt-lg-0 content">
            
             <p class="font-italic">
-              We <b>“NUSH MECHANICAL & FABRICATOR WORKS”</b>, are a leading and notable Design, Manufacturer and Supplier of superior quality range of Hydraulic Presses, Hydraulic Cylinder, Hose Type Machine, Hydraulic Lift Table and Machine, Hydraulic Power Pack, Hydraulic Bearing Puller Machine, Hydraulic Drilling Machine, Hydraulic SPM Machine, etc. Being a quality-centric organization, we manufacture these hydraulic products and equipments from high grade components and cutting-edge technology. Offered hydraulic products and equipments are highly acknowledged for their attributes such as reliable functioning, high efficiency, low maintenance, long working life and rigid design. To attain the maximum satisfaction of the clients, we provide these hydraulic products and equipments in numerous specifications. In order to maintain global quality in our hydraulic products and equipments, our quality experts check them against different parameters. Additionally, we provide these hydraulic products and equipments at most reasonable rates. Apart, from this we also provide Machine Fabrication Work to our customers.
+              We <b>“NUSH MECHANICAL & FABRICATOR WORKS”</b>, are a leading manufacturer and supplier of high-quality hydraulic products, including Hydraulic Presses, Hydraulic Cylinders, Hose Type Machines, Hydraulic Lift Tables, Hydraulic Power Packs, Hydraulic Bearing Puller Machines, Hydraulic Drilling Machines, Hydraulic SPM Machines, etc. Committed to quality, we craft these products from premium components and cutting-edge technology. Our hydraulic products are recognized for reliable performance, high efficiency, low maintenance, long lifespan, and robust design. To ensure client satisfaction, we offer these products in various specifications. Our dedicated quality experts rigorously assess the products against different parameters to maintain global quality standards. Furthermore, we provide these top-notch hydraulic products at competitive rates. Additionally, we offer Machine Fabrication Work to our customers.
             </p>
             <p>
-             Under the headship of our Mentor, <b>“Anil Sharma”</b>, we have been able to achieve invincible position in this industry. Founded in the year 2010, at Faridabad
-(Haryana, India), we are supported by advanced infrastructural base which play the most crucial role in the development of our company. Due to this well structural...
+             Under the headship of our Mentor, <b>“Anil Sharma”</b>, we have been able to achieve an invincible position in this industry. Founded in the year 2010, at Faridabad
+(Haryana, India).
             </p>
           </div>
 
@@ -196,6 +197,9 @@
           <div class="col-lg-2 col-md-4 col-6 d-flex align-items-center justify-content-center">
             <img src="assets/img/clients/client-2.png" class="img-fluid" alt="">
             </div>
+          <div class="col-lg-2 col-md-4 col-6 d-flex align-items-center justify-content-center">
+            <img src="assets/img/clients/client-3.png" class="img-fluid" alt="">
+            </div>
 
         </div>
 
@@ -204,7 +208,7 @@
 
   
     <!-- ======= Services Section ======= -->
-   <!-- <section id="services" class="services section-bg">
+   <section id="services" class="services section-bg">
       <div class="container" data-aos="fade-up">
 
         <div class="section-title">
@@ -261,7 +265,7 @@
     </section>--><!-- End Services Section -->
 
     <!-- ======= Testimonials Section ======= -->
-    <!--<section id="testimonials" class="testimonials">
+    <section id="testimonials" class="testimonials">
       <div class="container" data-aos="zoom-in">
 
         <div class="owl-carousel testimonials-carousel">
@@ -324,7 +328,7 @@
         </div>
 
       </div>
-    </section>--><!-- End Testimonials Section -->
+    </section><!-- End Testimonials Section -->
 
     <!-- ======= Portfolio Section ======= -->
     <section id="portfolio" class="portfolio">
@@ -456,7 +460,7 @@
 
           <div class="col-lg-4 col-md-6">
             <div class="member" data-aos="fade-up" data-aos-delay="100">
-              <div class="pic"><img src="assets/img/team/Team-1.png" class="img-fluid" alt=""></div>
+              <div class="pic"><img src="assets/img/team/Team1-1.png" class="img-fluid" alt=""></div>
               <div class="member-info">
                 <h4>Rameshwar Sharma</h4>
                 <span>Chief Executive Officer</span>
@@ -472,7 +476,7 @@
 
           <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
             <div class="member">
-              <div class="pic"><img src="assets/img/team/Team-2.png" class="img-fluid" alt=""></div>
+              <div class="pic"><img src="assets/img/team/Team1-2.png" class="img-fluid" alt=""></div>
               <div class="member-info">
                 <h4>Anil Sharma</h4>
                 <span>Product Manager</span>
@@ -492,10 +496,8 @@
     </section><!-- End Team Section -->
 
     <!-- ======= Contact Section ======= -->
-    
-      <?php echo $alert; ?>
-      
-      <section id="contact" class="contact">
+
+    <section id="contact" class="contact">
       <div class="container" data-aos="fade-up">
 
     <div class="section-title">
@@ -526,29 +528,45 @@
               <div class="info-box mt-4">
                 <i class="bx bx-phone-call"></i>
                 <h3>Call Us</h3>
-                <p>+91 9718968844 <br>+91 9667587686</p>
+                  <p><a href="tel:+91 9667587686">+91 9667587686</a> / <a href="tel:+91 9718968844">+91 9718968844</a></p>
               </div>
             </div>
           </div>
 
         </div>
-          
-    <!--alert messages start-->
-    <?php echo $alert; ?>
-    <!--alert messages end-->
-          
-          
-        <div class="col-lg-6 mt-4 mt-lg-0">
-          <form class="contact" action="" method="post">
-          <input type="text" name="name" class="text-box" placeholder="Your Name" required>
-          <input type="email" name="email" class="text-box" placeholder="Your Email" required>
-          <textarea name="message" rows="5" placeholder="Your Message" required></textarea>
-          <input type="submit" name="submit" class="send-btn" value="Send">
-        </form>
-        <!--alert messages start-->
-        <?php echo $alert; ?>
-        <!--alert messages end-->
 
+        <div class="col-lg-6 mt-4 mt-lg-0">
+          <?php echo $alert; ?>
+          <form action="index.php#contact" method="post" role="form" class="php-email-form">
+            <div class="form-row">
+              <div class="col-md-5 form-group">
+                <input type="text" name="name" class="form-control" id="name" placeholder="Your Name" data-rule="minlen:4" data-msg="Please enter at least 4 chars" />
+                <div class="validate"></div>
+              </div>
+              <div class="col-md-7 form-group">
+                <input type="email" class="form-control" name="email" id="email" placeholder="Your Email" data-rule="email" data-msg="Please enter a valid email" />
+                <div class="validate"></div>
+              </div>
+            </div>
+            <div class="form-group">
+              <input type="text" class="form-control" name="subject" id="subject" placeholder="Subject" data-rule="minlen:4" data-msg="Please enter at least 8 chars of subject" />
+              <div class="validate"></div>
+            </div>
+            <div class="form-group">
+              <input type="tel" class="form-control" name="phone" id="phone" placeholder="Mobile" data-rule="minlen:10" data-msg="Please enter you mobile n umber" />
+              <div class="validate"></div>
+            </div>
+            <div class="form-group">
+              <textarea class="form-control" name="message" rows="2" data-rule="required" data-msg="Please write something for us" placeholder="Message"></textarea>
+              <div class="validate"></div>
+            </div>
+            <div class="mb-3">
+              <div class="loading">Loading</div>
+              <div class="error-message"></div>
+              <div class="sent-message">Your message has been sent. Thank you!</div>
+            </div>
+            <div class="text-center"><button type="submit" name="submit">Send Message</button></div>
+          </form>
         </div>
 
       </div>
