@@ -1,5 +1,3 @@
-<?php include 'sendemail.php'; ?>
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -8,8 +6,8 @@
   <meta content="width=device-width, initial-scale=1.0" name="viewport">
 
   <title>NUSH MECHANICAL &amp; FABRICATOR WORKS</title>
-  <meta content="" name="description">
-  <meta content="" name="keywords">
+  <meta content="NUSH MECHANICAL & FABRICATOR WORKS specializes in the design and manufacturing of hydraulic presses, cylinders, power packs, and provides machine fabrication services." name="description">
+  <meta content="hydraulic press, hydraulic cylinder, machine fabrication, NUSH MECHANICAL, fabricator works, Anil Sharma" name="keywords">
 
   <!-- Favicons -->
   <link href="images/Logo.png" rel="icon">
@@ -30,11 +28,8 @@
   <!-- Template Main CSS File -->
   <link href="assets/css/style.css" rel="stylesheet">
     <link href="assets/css/about.css" rel="stylesheet">
-    
- <script defer src="https://use.fontawesome.com/releases/v5.0.7/js/all.js"></script>    
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.1/css/all.min.css">
 
- 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.1/css/all.min.css">
 </head>
 
 <body>
@@ -493,8 +488,6 @@
 
     <!-- ======= Contact Section ======= -->
     
-      <?php echo $alert; ?>
-      
       <section id="contact" class="contact">
       <div class="container" data-aos="fade-up">
           
@@ -532,41 +525,33 @@
 
         </div>
           
-    <!--alert messages start-->
-    <?php echo $alert; ?>
-    <!--alert messages end-->
           
           
         <div class="col-lg-6 mt-4 mt-lg-0">
-          <form action="/send_email" method="post" role="form" class="php-email-form">
+          <form action="index.php#contact" method="post" role="form">
             <div class="form-row">
-              <div class="col-md-5 form-group">
-                <input type="text" name="name" class="form-control" id="name" placeholder="Your Name" data-rule="minlen:4" data-msg="Please enter at least 4 chars" />
-                <div class="validate"></div>
+              <div class="col-md-6 form-group">
+                <input type="text" name="name" class="form-control" id="name" placeholder="Your Name" required />
               </div>
-              <div class="col-md-7 form-group">
-                <input type="email" class="form-control" name="email" id="email" placeholder="Your Email" data-rule="email" data-msg="Please enter a valid email" />
-                <div class="validate"></div>
+              <div class="col-md-6 form-group">
+                <input type="email" class="form-control" name="email" id="email" placeholder="Your Email" required />
               </div>
             </div>
             <div class="form-group">
-              <input type="text" class="form-control" name="subject" id="subject" placeholder="Subject" data-rule="minlen:4" data-msg="Please enter at least 8 chars of subject" />
-              <div class="validate"></div>
+              <input type="text" class="form-control" name="subject" id="subject" placeholder="Subject" required />
             </div>
             <div class="form-group">
-              <input type="tel" class="form-control" name="phone" id="phone" placeholder="Mobile" data-rule="minlen:10" data-msg="Please enter you mobile n umber" />
-              <div class="validate"></div>
+              <input type="tel" class="form-control" name="phone" id="phone" placeholder="Mobile (Optional)" />
             </div>
             <div class="form-group">
-              <textarea class="form-control" name="message" rows="2" data-rule="required" data-msg="Please write something for us" placeholder="Message"></textarea>
-              <div class="validate"></div>
+              <textarea class="form-control" name="message" rows="5" placeholder="Message" required></textarea>
             </div>
             <!--<div class="mb-3">
               <div class="loading">Loading</div>
               <div class="error-message"></div>
               <div class="sent-message">Your message has been sent. Thank you!</div>
             </div>-->
-            <button type="submit">Submit</button>
+            <div class="text-center"><button type="submit" name="submit">Send Message</button></div>
           </form>
         </div>
 

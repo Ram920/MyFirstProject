@@ -1,0 +1,17 @@
+.feature-title {
+  font-size: 1.5rem;
+}
+
+.feature-box {
+  text-align: center;
+  padding: 4.5%;
+}
+
+.icon {
+  color: #ef8172;
+  margin-bottom: 1rem;
+}
+
+.icon:hover {
+  color: black;
+}
