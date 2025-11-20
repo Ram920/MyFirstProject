@@ -1,12 +1,24 @@
 <?php
 session_start();
-require_once 'db_connect.php';
+
+// --- Session Timeout (15 minutes) ---
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 900)) {
+    session_unset(); session_destroy();
+    header("Location: index.php"); // Force redirect to login page
+    exit;
+}
+
+require_once __DIR__ . '/../db_connect.php';
 require_once 'config.php'; // Include configuration
+require_once 'functions.php'; // Include the new functions file
 
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     header("Location: index.php");
     exit;
 }
+
+// If we've reached here, the user is logged in. Now we can update their activity time.
+$_SESSION['last_activity'] = time();
 
 // --- Handle Add Product ---
 $message = '';
@@ -14,18 +26,23 @@ if (isset($_POST['add_product'])) {
     $name = $conn->real_escape_string($_POST['name']);
     $category = $conn->real_escape_string($_POST['category']);
     $description = $conn->real_escape_string($_POST['description']);
-
-    // Image Upload
-    $target_dir = "../assets/img/portfolio/";
-    $image_name = basename($_FILES["image"]["name"]);
-    $target_file = $target_dir . $image_name;
     
-    if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
-        $sql = "INSERT INTO products (name, category, image, description) VALUES ('$name', '$category', '$image_name', '$description')";
-        if ($conn->query($sql)) {
-            $message = '<div class="alert alert-success">Product added successfully!</div>';
+    if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
+        $target_dir = "../assets/img/portfolio/";
+        $image_name = time() . '_' . basename($_FILES["image"]["name"]); // Create a unique name
+        $target_file = $target_dir . $image_name;
+
+        if (resizeAndCropImage($_FILES["image"]["tmp_name"], $target_file)) {
+            // Use prepared statement to prevent SQL injection
+            $stmt = $conn->prepare("INSERT INTO products (name, category, image, description) VALUES (?, ?, ?, ?)");
+            $stmt->bind_param("ssss", $_POST['name'], $_POST['category'], $image_name, $_POST['description']);
+            if ($stmt->execute()) {
+                $message = '<div class="alert alert-success">Product added successfully!</div>';
+            } else {
+                $message = '<div class="alert alert-danger">Error: ' . $conn->error . '</div>';
+            }
         } else {
-            $message = '<div class="alert alert-danger">Error: ' . $conn->error . '</div>';
+            $message = '<div class="alert alert-danger">Sorry, there was an error processing your image. Please upload a valid JPG, PNG, or GIF.</div>';
         }
     } else {
         $message = '<div class="alert alert-danger">Sorry, there was an error uploading your file.</div>';
@@ -35,15 +52,22 @@ if (isset($_POST['add_product'])) {
 // --- Handle Delete Product ---
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
-    $res = $conn->query("SELECT image FROM products WHERE id = $id");
-    if ($res->num_rows > 0) {
-        $row = $res->fetch_assoc();
+    // Use prepared statement to securely fetch the image name
+    $stmt = $conn->prepare("SELECT image FROM products WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
         $image_path = '../assets/img/portfolio/' . $row['image'];
         if (file_exists($image_path)) {
             unlink($image_path);
         }
     }
-    $conn->query("DELETE FROM products WHERE id = $id");
+    // Use prepared statement to securely delete the product
+    $stmt = $conn->prepare("DELETE FROM products WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
     header("Location: manage_products.php");
     exit;
 }
@@ -61,7 +85,10 @@ $categories = $conn->query("SELECT * FROM categories ORDER BY name ASC");
 <body>
 <div class="container mt-5">
     <a href="index.php" class="btn btn-secondary mb-3">← Back to Dashboard</a>
-    <h2>Manage Products</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Manage Products</h2>
+        <a href="logout.php" class="btn btn-danger">Logout</a>
+    </div>
     <?php echo $message; ?>
 
     <!-- Add Product Form -->
@@ -80,7 +107,7 @@ $categories = $conn->query("SELECT * FROM categories ORDER BY name ASC");
                     </select>
                 </div>
                 <div class="form-group"><textarea name="description" class="form-control" placeholder="Description (optional)"></textarea></div>
-                <div class="form-group"><label>Product Image:</label><input type="file" name="image" class="form-control-file" required></div>
+                <div class="form-group"><label>Product Image (will be resized to 800x600):</label><input type="file" name="image" class="form-control-file" required></div>
                 <button type="submit" name="add_product" class="btn btn-primary">Add Product</button>
             </form>
         </div>

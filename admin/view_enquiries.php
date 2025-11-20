@@ -1,12 +1,23 @@
 <?php
 session_start();
-require_once 'db_connect.php';
+
+// --- Session Timeout (15 minutes) ---
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 900)) {
+    session_unset(); session_destroy();
+    header("Location: index.php"); // Force redirect to login page
+    exit;
+}
+
+require_once __DIR__ . '/../db_connect.php';
 require_once 'config.php'; // Include configuration
 
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     header("Location: index.php");
     exit;
 }
+
+// If we've reached here, the user is logged in. Now we can update their activity time.
+$_SESSION['last_activity'] = time();
 
 $enquiries = $conn->query("SELECT * FROM enquiries ORDER BY submission_date DESC");
 ?>
@@ -20,7 +31,10 @@ $enquiries = $conn->query("SELECT * FROM enquiries ORDER BY submission_date DESC
 <body>
 <div class="container-fluid mt-5">
     <a href="index.php" class="btn btn-secondary mb-3">← Back to Dashboard</a>
-    <h2>View Enquiries</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>View Enquiries</h2>
+        <a href="logout.php" class="btn btn-danger">Logout</a>
+    </div>
     <a href="export_enquiries.php" class="btn btn-success mb-3">Export to Excel (CSV)</a>
 
     <div class="table-responsive">
@@ -35,6 +49,7 @@ $enquiries = $conn->query("SELECT * FROM enquiries ORDER BY submission_date DESC
                     <th>Email</th>
                     <th>Phone</th>
                     <th>Products</th>
+                    <th>Type</th>
                     <th>Details</th>
                 </tr>
             </thead>
@@ -56,6 +71,7 @@ $enquiries = $conn->query("SELECT * FROM enquiries ORDER BY submission_date DESC
                         <td><a href="mailto:<?php echo htmlspecialchars($row['email']); ?>"><?php echo htmlspecialchars($row['email']); ?></a></td>
                         <td><a href="tel:<?php echo htmlspecialchars($row['phone']); ?>"><?php echo htmlspecialchars($row['phone']); ?></a></td>
                         <td><?php echo htmlspecialchars($row['products_inquired']); ?></td>
+                        <td><?php echo htmlspecialchars($row['inquiry_type']); ?></td>
                         <td><button class="btn btn-info btn-sm" data-toggle="modal" data-target="#detailsModal-<?php echo $row['id']; ?>">View</button></td>
                     </tr>
 

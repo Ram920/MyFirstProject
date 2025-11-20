@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once 'db_connect.php';
+require_once __DIR__ . '/../db_connect.php';
 require_once 'config.php'; // Include configuration
 
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
@@ -14,9 +14,9 @@ $output = fopen('php://output', 'w');
 
 // Add column headers
 fputcsv($output, [
-    'ID', 'Date', 'Status', 'Name', 'Company', 'Email', 'Phone', 
+    'ID', 'Date', 'Status', 'Name', 'Company', 'Email', 'Phone',
     'Delivery Location', 'Quantity', 'Products Inquired', 
-    'Customization Req', 'Additional Req', 'Drawing File'
+    'Customization Req', 'Additional Req', 'Drawing File', 'Inquiry Type'
 ]);
 
 $result = $conn->query("SELECT * FROM enquiries ORDER BY submission_date DESC");
@@ -35,7 +35,8 @@ while ($row = $result->fetch_assoc()) {
         $row['products_inquired'],
         $row['customization_req'],
         $row['additional_req'],
-        $row['drawing_file']
+        $row['drawing_file'],
+        $row['inquiry_type']
     ]);
 }
 

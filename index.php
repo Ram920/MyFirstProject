@@ -1,12 +1,19 @@
 <?php
-  // This will start the session and include db_connect.php
-  require_once 'sendemail.php'; 
-  require_once 'admin/config.php'; // Include configuration for COMPANY_NAME
+  // Start the session.
+  if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+  }
+
+
+  // Include the database connection first as it's needed for the site visit tracker.
+  require_once 'admin/config.php'; // Load config first, as sendemail.php depends on it.
+  require_once 'db_connect.php';
 
   // --- Basic Site Visit Tracker ---
   $today = date("Y-m-d");
-  // Use an INSERT ... ON DUPLICATE KEY UPDATE query to either insert a new row for the day or increment the existing one.
-  $conn->query("INSERT INTO site_visits (visit_date, visit_count) VALUES ('$today', 1) ON DUPLICATE KEY UPDATE visit_count = visit_count + 1");
+  $stmt = $conn->prepare("INSERT INTO site_visits (visit_date, visit_count) VALUES (?, 1) ON DUPLICATE KEY UPDATE visit_count = visit_count + 1");
+  $stmt->bind_param("s", $today);
+  $stmt->execute();
   // Do NOT close the connection here. It will be closed later in the script.
 ?>
 <!DOCTYPE html>
@@ -67,7 +74,7 @@
           <li><a href="#services">Services</a></li>
           <li><a href="#portfolio">Portfolio</a></li>
           <li><a href="#team">Team</a></li>
-          <li><a href="cart.php">Quote Basket (<?php echo count($_SESSION['cart'] ?? []); ?>)</a></li>
+          <li><a href="cart.php" id="quote-basket-link">Quote Basket (<span id="cart-count"><?php echo count($_SESSION['cart'] ?? []); ?></span>)</a></li>
           <li><a href="#contact">Contact</a></li>
 
         </ul>
@@ -352,35 +359,49 @@
         <div class="row" data-aos="fade-up" data-aos-delay="100">
           <div class="col-lg-12 d-flex justify-content-center">
             <ul id="portfolio-flters">
-              <li data-filter="*" class="filter-active">All</li>
-              <li data-filter=".filter-conveyors">Conveyors</li>
-              <li data-filter=".filter-spm">Hydraulic SPM</li>
-              <li data-filter=".filter-rubber">Rubber Molding </li>
+                <?php
+                // --- Dynamic Portfolio Filters ---
+
+                // First, check if there are any products at all.
+                $product_count_result = $conn->query("SELECT COUNT(*) AS total FROM products");
+                $product_count = $product_count_result->fetch_assoc()['total'];
+
+                // Only show filters if there is at least one product.
+                if ($product_count > 0) {
+                    echo '<li data-filter="*" class="filter-active">All</li>';
+
+                    // Fetch all categories from the database and create a filter for each one.
+                    $categories_result = $conn->query("SELECT * FROM categories ORDER BY name ASC");
+                    while ($category = $categories_result->fetch_assoc()) {
+                        echo '<li data-filter=".' . htmlspecialchars($category['filter_class']) . '">' . htmlspecialchars($category['name']) . '</li>';
+                    }
+                }
+                ?>
             </ul>
           </div>
         </div>
 
         <div class="row portfolio-container" data-aos="fade-up" data-aos-delay="200">
             <?php
-              // --- Fetch products from database ---
-              require_once 'admin/db_connect.php';
               $result = $conn->query("SELECT * FROM products ORDER BY id DESC");
               while($product = $result->fetch_assoc()):
             ?>
             <div class="col-lg-4 col-md-6 portfolio-item <?php echo htmlspecialchars($product['category']); ?>">
-              <img src="assets/img/portfolio/<?php echo htmlspecialchars($product['image']); ?>" class="img-fluid" alt="<?php echo htmlspecialchars($product['name']); ?>">
-              <div class="portfolio-info">
-                <h4><?php echo htmlspecialchars($product['name']); ?></h4>
-                <p><?php echo htmlspecialchars($product['description']); ?></p>
-                <div>
-                  <a href="assets/img/portfolio/<?php echo htmlspecialchars($product['image']); ?>" data-gall="portfolioGallery" class="venobox preview-link" title="<?php echo htmlspecialchars($product['name']); ?>"><i class="bx bx-plus"></i></a>
-                  <a href="cart_handler.php?action=add&id=<?php echo $product['id']; ?>" class="details-link" title="Add to Inquiry"><i class="bx bx-cart-add"></i></a>
+              <div class="portfolio-wrap">
+                <img src="assets/img/portfolio/<?php echo htmlspecialchars($product['image']); ?>" class="img-fluid" alt="<?php echo htmlspecialchars($product['name']); ?>">
+                <div class="portfolio-info">
+                    <h4><?php echo htmlspecialchars($product['name']); ?></h4>
+                    <p><?php echo htmlspecialchars($product['description']); ?></p>
+                    <div class="portfolio-links mt-3">
+                        <a href="assets/img/portfolio/<?php echo htmlspecialchars($product['image']); ?>" data-gall="portfolioGallery" class="venobox btn btn-sm btn-light" title="Preview"><i class="bx bx-plus"></i></a>
+                        <a href="cart_handler.php?action=add&id=<?php echo $product['id']; ?>" class="btn btn-sm btn-warning add-to-cart-btn" data-product-id="<?php echo $product['id']; ?>" title="Add to Inquiry"><i class="bx bx-cart-add"></i> Add to Basket</a>
+                        <a href="cart_handler.php?action=whatsapp&id=<?php echo $product['id']; ?>" class="btn btn-sm btn-success" title="Share on WhatsApp" target="_blank"><i class="fab fa-whatsapp"></i></a>
+                    </div>
                 </div>
               </div>
             </div>
             <?php
               endwhile;
-              $conn->close();
             ?>
 
         </div>
@@ -478,7 +499,7 @@
 
         <div class="col-lg-6 mt-4 mt-lg-0">
             <?php echo $alert; ?>
-            <form action="index.php#contact" method="post" role="form">
+            <form action="sendemail.php" method="post" role="form" class="php-email-form">
               <div class="form-row">
                 <div class="col-md-6 form-group">
                   <input type="text" name="name" class="form-control" id="name" placeholder="Your Name" required />
@@ -495,6 +516,11 @@
               </div>
               <div class="form-group">
                 <textarea class="form-control" name="message" rows="5" placeholder="Message" required></textarea>
+              </div>
+              <div class="mb-3">
+                <div class="loading">Loading</div>
+                <div class="error-message"></div>
+                <div class="sent-message">Your message has been sent. Thank you!</div>
               </div>
               <div class="text-center"><button type="submit" name="submit">Send Message</button></div>
             </form>
@@ -596,8 +622,40 @@
     if(window.history.replaceState){
       window.history.replaceState(null, null, window.location.href);
     }
-    </script>
 
+    // AJAX for adding products to the cart without page refresh
+    $(document).ready(function(){
+        $('.add-to-cart-btn').on('click', function(e){
+            e.preventDefault(); // Prevent the link from navigating
+
+            var productId = $(this).data('product-id');
+            var button = $(this);
+
+            $.ajax({
+                url: 'cart_handler.php',
+                type: 'POST',
+                data: {
+                    action: 'add',
+                    id: productId
+                },
+                dataType: 'json',
+                success: function(response){
+                    if(response.success) {
+                        // Update the cart count in the header
+                        $('#cart-count').text(response.cart_count);
+                        // You could add a visual confirmation here, e.g., a toast message
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                }
+            });
+        });
+    });
+    </script>
+    <?php
+      // Close the database connection at the very end of the script.
+      $conn->close();
+    ?>
 </body>
 
 </html>

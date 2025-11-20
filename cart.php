@@ -1,6 +1,11 @@
 <?php
-require_once 'sendemail.php';
-require_once 'admin/config.php'; // Include configuration for COMPANY_NAME
+// Start the session to access the cart.
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+require_once 'admin/config.php'; // Load config for db connection
+require_once 'db_connect.php';   // Connect to the database
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -69,21 +74,27 @@ require_once 'admin/config.php'; // Include configuration for COMPANY_NAME
                 } else {
                 ?>
                     <?php
-                    // Prepare WhatsApp message
-                    $whatsapp_phone = '+918600222111'; // Your WhatsApp number
-                    $whatsapp_message_prefix = "Hello, I would like to inquire about the following products from your Quote Basket:\n\n";
-                    $whatsapp_product_list = "";
-                    
-                    // Fetch product names for WhatsApp message
-                    $product_ids_for_whatsapp = implode(',', array_map('intval', $cart_items));
-                    $whatsapp_result = $conn->query("SELECT name FROM products WHERE id IN ($product_ids_for_whatsapp)");
-                    $product_count = 1;
-                    while ($wp_product = $whatsapp_result->fetch_assoc()) {
-                        $whatsapp_product_list .= $product_count . ". " . htmlspecialchars($wp_product['name']) . "\n";
-                        $product_count++;
+                    // Prepare WhatsApp message only if the cart is not empty
+                    $whatsapp_link = '#';
+                    if (!empty($cart_items)) {
+                        $whatsapp_phone = '+918600222111'; // Your WhatsApp number
+                        $whatsapp_message_prefix = "Hello, I would like to inquire about the following products from your Quote Basket:\n\n";
+                        $whatsapp_product_list = "";
+                        
+                        // Securely fetch product names for WhatsApp message
+                        $placeholders = implode(',', array_fill(0, count($cart_items), '?'));
+                        $stmt = $conn->prepare("SELECT name FROM products WHERE id IN ($placeholders)");
+                        $stmt->bind_param(str_repeat('i', count($cart_items)), ...$cart_items);
+                        $stmt->execute();
+                        $whatsapp_result = $stmt->get_result();
+                        $product_count = 1;
+                        while ($wp_product = $whatsapp_result->fetch_assoc()) {
+                            $whatsapp_product_list .= $product_count . ". " . htmlspecialchars($wp_product['name']) . "\n";
+                            $product_count++;
+                        }
+                        $full_whatsapp_message = urlencode($whatsapp_message_prefix . $whatsapp_product_list . "\nMy Name: \nCompany: \nPhone: ");
+                        $whatsapp_link = "https://wa.me/{$whatsapp_phone}?text={$full_whatsapp_message}";
                     }
-                    $full_whatsapp_message = urlencode($whatsapp_message_prefix . $whatsapp_product_list . "\nMy Name: \nCompany: \nPhone: ");
-                    $whatsapp_link = "https://wa.me/{$whatsapp_phone}?text={$full_whatsapp_message}";
                     ?>
 
                     <a href="<?php echo $whatsapp_link; ?>" class="btn btn-success btn-lg mb-4" target="_blank"><i class="fab fa-whatsapp"></i> Enquire via WhatsApp</a>
@@ -98,11 +109,13 @@ require_once 'admin/config.php'; // Include configuration for COMPANY_NAME
                         </thead>
                         <tbody>
                             <?php
-                            $product_ids = implode(',', array_map('intval', $cart_items));
-                            $products_html = "<ul>"; // For email body
-                            $result = $conn->query("SELECT * FROM products WHERE id IN ($product_ids)");
+                            // Use a prepared statement to fetch product details securely
+                            $placeholders = implode(',', array_fill(0, count($cart_items), '?'));
+                            $stmt = $conn->prepare("SELECT * FROM products WHERE id IN ($placeholders)");
+                            $stmt->bind_param(str_repeat('i', count($cart_items)), ...$cart_items);
+                            $stmt->execute();
+                            $result = $stmt->get_result();
                             while ($product = $result->fetch_assoc()) {
-                                $products_html .= "<li>" . htmlspecialchars($product['name']) . "</li>";
                             ?>
                             <tr>
                                 <td><img src="assets/img/portfolio/<?php echo htmlspecialchars($product['image']); ?>" width="100" alt="<?php echo htmlspecialchars($product['name']); ?>"></td>
@@ -110,7 +123,6 @@ require_once 'admin/config.php'; // Include configuration for COMPANY_NAME
                                 <td><a href="cart_handler.php?action=remove&id=<?php echo $product['id']; ?>" class="btn btn-danger btn-sm">Remove</a></td>
                             </tr>
                             <?php } 
-                            $products_html .= "</ul>";
                             ?>
                         </tbody>
                     </table>
@@ -120,8 +132,7 @@ require_once 'admin/config.php'; // Include configuration for COMPANY_NAME
                     <h3>Submit Your Quote Request</h3>
                     <p>Please fill out the form below, and we will get back to you with a quote for the products you've selected.</p>
 
-                    <?php echo $alert; ?>
-                    <form action="cart.php" method="post" role="form" enctype="multipart/form-data">
+                    <form action="sendemail.php" method="post" role="form" class="php-email-form" enctype="multipart/form-data">
                         
                         <div class="form-row">
                             <div class="col-md-6 form-group">
@@ -155,6 +166,11 @@ require_once 'admin/config.php'; // Include configuration for COMPANY_NAME
                         </div>
                         <div class="form-group">
                             <textarea class="form-control" name="additional_requirements" rows="5" placeholder="Additional requirements or comments..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <div class="loading">Loading</div>
+                            <div class="error-message"></div>
+                            <div class="sent-message">Your quote request has been sent. Thank you!</div>
                         </div>
                         <div class="text-center"><button type="submit" name="submit">Enquire Now</button></div>
                     </form>

@@ -1,33 +1,68 @@
 <?php
 session_start();
-require_once 'db_connect.php';
+
+// --- Session Timeout (15 minutes) ---
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 900)) {
+    session_unset();     // unset $_SESSION variable for the run-time 
+    session_destroy();   // destroy session data in storage
+    header("Location: index.php"); // Force redirect to login page
+    exit;
+}
+
+require_once __DIR__ . '/../db_connect.php';
 require_once 'config.php'; // Include configuration
 
 // --- Simple Password Protection ---
-$admin_password = ADMIN_PASSWORD; // Get from config.php
 $error          = '';
 
 if (isset($_POST['login'])) {
-    if ($_POST['password'] === $admin_password) {
+    $username = trim($_POST['username']);
+    $password = trim($_POST['password']);
+
+    // Fetch the stored hash for the given username
+    $stmt = $conn->prepare("SELECT password_hash FROM admin_users WHERE username = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 1) {
+        $user = $result->fetch_assoc();
+        $stored_password_hash = $user['password_hash'];
+
+        // Verify the submitted password against the stored hash
+        if (password_verify($password, $stored_password_hash)) {
         $_SESSION['loggedin'] = true;
+        $_SESSION['last_activity'] = time(); // Set activity time on login
+        $_SESSION['username'] = $username; // Store username in session
+
+        // On successful login, redirect to the same page to clear POST data and show the dashboard.
+        header("Location: index.php");
+        exit;
+        } else {
+            $error = 'Invalid username or password!';
+        }
     } else {
-        $error = 'Invalid password!';
+        $error = 'Invalid username or password!';
     }
 }
-
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Login</title>
     <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
     <div class="container mt-5">
         <h2>Admin Login</h2>
-        <form method="post">
+        <form action="index.php" method="post">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" name="username" id="username" class="form-control" required autofocus>
+            </div>
             <div class="form-group">
                 <label for="password">Password</label>
                 <input type="password" name="password" id="password" class="form-control" required>
@@ -42,11 +77,17 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     exit;
 }
 
+// If we've reached here, the user is logged in. Now we can update their activity time.
+$_SESSION['last_activity'] = time();
+
 // --- Fetch stats for dashboard ---
 $enquiries_result = $conn->query("SELECT status, COUNT(*) as count FROM enquiries GROUP BY status");
 $enquiry_stats = ['New' => 0, 'Contacted' => 0, 'Quoted' => 0, 'Closed' => 0];
 while ($row = $enquiries_result->fetch_assoc()) {
+    // Ensure status keys exist before assigning
+    if (array_key_exists($row['status'], $enquiry_stats)) {
     $enquiry_stats[$row['status']] = $row['count'];
+    }
 }
 
 $visits_result = $conn->query("SELECT SUM(visit_count) as total_visits FROM site_visits");
@@ -54,6 +95,13 @@ $total_visits = $visits_result->fetch_assoc()['total_visits'] ?? 0;
 
 $today_visits_result = $conn->query("SELECT visit_count FROM site_visits WHERE visit_date = CURDATE()");
 $today_visits = $today_visits_result->fetch_assoc()['visit_count'] ?? 0;
+
+// Fetch inquiry type counts
+$inquiry_type_result = $conn->query("SELECT inquiry_type, COUNT(*) as count FROM enquiries GROUP BY inquiry_type");
+$inquiry_type_stats = [];
+while ($row = $inquiry_type_result->fetch_assoc()) {
+    $inquiry_type_stats[$row['inquiry_type']] = $row['count'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -64,7 +112,10 @@ $today_visits = $today_visits_result->fetch_assoc()['visit_count'] ?? 0;
 </head>
 <body>
 <div class="container mt-5">
-    <h2>Admin Dashboard</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Admin Dashboard</h2>
+        <a href="logout.php" class="btn btn-danger">Logout</a>
+    </div>
     <p>Welcome to the admin panel. From here you can manage your website's content.</p>
 
     <div class="row">
@@ -88,6 +139,9 @@ $today_visits = $today_visits_result->fetch_assoc()['visit_count'] ?? 0;
                     <li class="list-group-item d-flex justify-content-between align-items-center">Total Site Visits <span class="badge badge-primary badge-pill"><?php echo $total_visits; ?></span></li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">New Enquiries <span class="badge badge-info badge-pill"><?php echo $enquiry_stats['New']; ?></span></li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">Closed Enquiries <span class="badge badge-success badge-pill"><?php echo $enquiry_stats['Closed']; ?></span></li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">General Contact Form <span class="badge badge-secondary badge-pill"><?php echo $inquiry_type_stats['General Contact Form'] ?? 0; ?></span></li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">Quote Basket Email <span class="badge badge-secondary badge-pill"><?php echo $inquiry_type_stats['Quote Basket Email'] ?? 0; ?></span></li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">Direct WhatsApp Inquiry <span class="badge badge-secondary badge-pill"><?php echo $inquiry_type_stats['Direct WhatsApp Inquiry'] ?? 0; ?></span></li>
                 </ul>
             </div>
             <div class="alert alert-info mt-3"><strong>Note:</strong> The site visit counter is basic. For detailed analytics (unique visitors, traffic sources, etc.), integrating a service like Google Analytics is highly recommended.</div>

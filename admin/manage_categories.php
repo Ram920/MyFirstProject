@@ -1,6 +1,14 @@
 <?php
 session_start();
-require_once 'db_connect.php';
+
+// --- Session Timeout (15 minutes) ---
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 900)) {
+    session_unset(); session_destroy();
+    header("Location: index.php"); // Force redirect to login page
+    exit;
+}
+
+require_once __DIR__ . '/../db_connect.php';
 require_once 'config.php'; // Include configuration
 
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
@@ -8,14 +16,18 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     exit;
 }
 
+// If we've reached here, the user is logged in. Now we can update their activity time.
+$_SESSION['last_activity'] = time();
+
 $message = '';
 // Handle Add Category
 if (isset($_POST['add_category'])) {
     $name = $conn->real_escape_string($_POST['name']);
     $filter_class = $conn->real_escape_string($_POST['filter_class']);
     if (!empty($name) && !empty($filter_class)) {
-        $sql = "INSERT INTO categories (name, filter_class) VALUES ('$name', '$filter_class')";
-        if ($conn->query($sql)) {
+        $stmt = $conn->prepare("INSERT INTO categories (name, filter_class) VALUES (?, ?)");
+        $stmt->bind_param("ss", $name, $filter_class);
+        if ($stmt->execute()) {
             $message = '<div class="alert alert-success">Category added successfully!</div>';
         } else {
             $message = '<div class="alert alert-danger">Error: ' . $conn->error . '</div>';
@@ -26,7 +38,9 @@ if (isset($_POST['add_category'])) {
 // Handle Delete Category
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
-    $conn->query("DELETE FROM categories WHERE id = $id");
+    $stmt = $conn->prepare("DELETE FROM categories WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
     header("Location: manage_categories.php");
     exit;
 }
@@ -43,7 +57,10 @@ $categories = $conn->query("SELECT * FROM categories ORDER BY name ASC");
 <body>
 <div class="container mt-5">
     <a href="index.php" class="btn btn-secondary mb-3">← Back to Dashboard</a>
-    <h2>Manage Categories</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Manage Categories</h2>
+        <a href="logout.php" class="btn btn-danger">Logout</a>
+    </div>
     <?php echo $message; ?>
 
     <div class="row">

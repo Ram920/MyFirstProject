@@ -1,13 +1,23 @@
 <?php
 session_start();
-require_once 'db_connect.php';
-require_once 'config.php'; // Include configuration
+// --- Session Timeout (15 minutes) ---
+if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 900)) {
+    session_unset(); session_destroy();
+    header("Location: index.php"); // Force redirect to login page
+    exit;
+}
+
+require_once 'functions.php'; // Include the new functions file
+require_once __DIR__ . '/../db_connect.php'; // Correct path to root db_connect.php
 
 // --- Check if admin is logged in ---
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     header("Location: index.php");
     exit;
 }
+
+// If we've reached here, the user is logged in. Now we can update their activity time.
+$_SESSION['last_activity'] = time();
 $message = '';
 $product_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
@@ -28,10 +38,10 @@ if (isset($_POST['update_product'])) {
     // --- Check if a new image is uploaded ---
     if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
         $target_dir = "../assets/img/portfolio/";
-        $new_image_name = basename($_FILES["image"]["name"]);
+        $new_image_name = time() . '_' . basename($_FILES["image"]["name"]); // Create a unique name
         $target_file = $target_dir . $new_image_name;
 
-        if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
+        if (resizeAndCropImage($_FILES["image"]["tmp_name"], $target_file)) {
             // Delete the old image if it's different from the new one
             if ($current_image && $current_image != $new_image_name) {
                 $old_image_path = $target_dir . $current_image;
@@ -41,13 +51,14 @@ if (isset($_POST['update_product'])) {
             }
             $image_name = $new_image_name;
         } else {
-            $message = '<div class="alert alert-danger">Sorry, there was an error uploading your new file.</div>';
+            $message = '<div class="alert alert-danger">Sorry, there was an error processing your new image. Please upload a valid JPG, PNG, or GIF.</div>';
         }
     }
 
     if (empty($message)) {
-        $sql = "UPDATE products SET name = '$name', category = '$category', description = '$description', image = '$image_name' WHERE id = $product_id";
-        if ($conn->query($sql)) {
+        $stmt = $conn->prepare("UPDATE products SET name = ?, category = ?, description = ?, image = ? WHERE id = ?");
+        $stmt->bind_param("ssssi", $name, $category, $description, $image_name, $product_id);
+        if ($stmt->execute()) {
             // Redirect to the main admin page to see the changes
             header("Location: manage_products.php?update=success");
             exit;
@@ -58,7 +69,10 @@ if (isset($_POST['update_product'])) {
 }
 
 // --- Fetch Product Data for the Form ---
-$result = $conn->query("SELECT * FROM products WHERE id = $product_id");
+$stmt = $conn->prepare("SELECT * FROM products WHERE id = ?");
+$stmt->bind_param("i", $product_id);
+$stmt->execute();
+$result = $stmt->get_result();
 if ($result->num_rows > 0) {
     $product = $result->fetch_assoc();
 } else {
@@ -77,7 +91,10 @@ if ($result->num_rows > 0) {
 </head>
 <body>
 <div class="container mt-5">
-    <h2>Edit Product</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Edit Product</h2>
+        <a href="logout.php" class="btn btn-danger">Logout</a>
+    </div>
     <?php echo $message; ?>
 
     <div class="card my-4">
@@ -103,7 +120,7 @@ if ($result->num_rows > 0) {
                     <label>Current Image:</label><br>
                     <img src="../assets/img/portfolio/<?php echo htmlspecialchars($product['image']); ?>" width="150" alt="" class="mb-2">
                 </div>
-                <div class="form-group"><label>Upload New Image (optional):</label><input type="file" name="image" class="form-control-file"></div>
+                <div class="form-group"><label>Upload New Image (optional, will be resized to 800x600):</label><input type="file" name="image" class="form-control-file"></div>
                 
                 <button type="submit" name="update_product" class="btn btn-primary">Update Product</button>
                 <a href="manage_products.php" class="btn btn-secondary">Cancel</a>
