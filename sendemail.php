@@ -15,7 +15,6 @@ require_once 'phpmailer/SMTP.php';
 $mail = new PHPMailer(true);
 $alert = '';
 
-if(isset($_POST['submit'])){
   // Sanitize user input to prevent XSS attacks
   $name = htmlspecialchars(strip_tags(trim($_POST['name'])));
   $email = filter_var(trim($_POST['email']), FILTER_SANITIZE_EMAIL);
@@ -79,7 +78,7 @@ if(isset($_POST['submit'])){
         $mail->Port = '587';
 
         $mail->setFrom($email, $name);
-        $mail->addAddress('nushmechanical@gmail.com'); // The email address where you want to receive messages
+        $mail->addAddress(ADMIN_EMAIL_RECIPIENT); // The email address where you want to receive messages
         $mail->addReplyTo($email, $name);
 
         $mail->isHTML(true);
@@ -204,5 +203,4 @@ if(isset($_POST['submit'])){
         echo 'Something went wrong. Please try again later.';
       }
   }
-}
 ?>

@@ -1744,3 +1744,18 @@ section {
   border-left: 8px solid #FFA502;
   border-radius: 4px;
 }
+
+/* Toast Notification for Add to Cart */
+.toast-notification {
+  display: none; /* Hidden by default */
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background-color: #28a745; /* Green for success */
+  color: white;
+  padding: 16px;
+  border-radius: 5px;
+  z-index: 1050;
+  font-size: 16px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}

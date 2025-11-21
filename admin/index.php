@@ -1,12 +1,19 @@
 <?php
 session_start();
 
-// --- Session Timeout (15 minutes) ---
+// --- Session Security Check ---
+$is_logged_in = isset($_SESSION['loggedin']) && $_SESSION['loggedin'] === true;
+$is_session_active = isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] < 900);
+
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 900)) {
     session_unset();     // unset $_SESSION variable for the run-time 
     session_destroy();   // destroy session data in storage
-    header("Location: index.php"); // Force redirect to login page
-    exit;
+    $is_logged_in = false; // Force logout
+}
+
+// Update activity time *only* if logged in
+if ($is_logged_in) {
+    $_SESSION['last_activity'] = time();
 }
 
 require_once __DIR__ . '/../db_connect.php';
@@ -39,13 +46,13 @@ if (isset($_POST['login'])) {
         header("Location: index.php");
         exit;
         } else {
-            $error = 'Invalid username or password!';
+            $error = 'Invalid username or password.';
         }
     } else {
-        $error = 'Invalid username or password!';
+        $error = 'Invalid username or password.';
     }
 }
-if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+if (!$is_logged_in) {
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -76,9 +83,6 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
 <?php
     exit;
 }
-
-// If we've reached here, the user is logged in. Now we can update their activity time.
-$_SESSION['last_activity'] = time();
 
 // --- Fetch stats for dashboard ---
 $enquiries_result = $conn->query("SELECT status, COUNT(*) as count FROM enquiries GROUP BY status");
@@ -127,6 +131,7 @@ while ($row = $inquiry_type_result->fetch_assoc()) {
                     <a href="manage_products.php" class="list-group-item list-group-item-action">Manage Products</a>
                     <a href="manage_categories.php" class="list-group-item list-group-item-action">Manage Categories</a>
                     <a href="view_enquiries.php" class="list-group-item list-group-item-action">View Enquiries</a>
+                    <a href="generate_quote.php" class="list-group-item list-group-item-action" target="_blank">Create Custom Quote</a>
                 </div>
             </div>
         </div>

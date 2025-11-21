@@ -1,165 +1,83 @@
 /**
-* PHP Email Form Validation - v2.3
-* URL: https://bootstrapmade.com/php-email-form/
-* Author: BootstrapMade.com
-*/
+ * PHP Email Form Validation - v3.0
+ * URL: https://bootstrapmade.com/php-email-form/
+ * Author: BootstrapMade.com
+ */
 !(function($) {
   "use strict";
 
   $('form.php-email-form').submit(function(e) {
     e.preventDefault();
-    
-    var f = $(this).find('.form-group'),
-      ferror = false,
-      emailExp = /^[^\s()<>@,;:\/]+@\w[\w\.-]+\.[a-z]{2,}$/i;
-
-    f.children('input').each(function() { // run all inputs
-     
-      var i = $(this); // current input
-      var rule = i.attr('data-rule');
-
-      if (rule !== undefined) {
-        var ierror = false; // error flag for current input
-        var pos = rule.indexOf(':', 0);
-        if (pos >= 0) {
-          var exp = rule.substr(pos + 1, rule.length);
-          rule = rule.substr(0, pos);
-        } else {
-          rule = rule.substr(pos + 1, rule.length);
-        }
-
-        switch (rule) {
-          case 'required':
-            if (i.val() === '') {
-              ferror = ierror = true;
-            }
-            break;
-
-          case 'minlen':
-            if (i.val().length < parseInt(exp)) {
-              ferror = ierror = true;
-            }
-            break;
-
-          case 'email':
-            if (!emailExp.test(i.val())) {
-              ferror = ierror = true;
-            }
-            break;
-
-          case 'checked':
-            if (! i.is(':checked')) {
-              ferror = ierror = true;
-            }
-            break;
-
-          case 'regexp':
-            exp = new RegExp(exp);
-            if (!exp.test(i.val())) {
-              ferror = ierror = true;
-            }
-            break;
-        }
-        i.next('.validate').html((ierror ? (i.attr('data-msg') !== undefined ? i.attr('data-msg') : 'wrong Input') : '')).show('blind');
-      }
-    });
-    f.children('textarea').each(function() { // run all inputs
-
-      var i = $(this); // current input
-      var rule = i.attr('data-rule');
-
-      if (rule !== undefined) {
-        var ierror = false; // error flag for current input
-        var pos = rule.indexOf(':', 0);
-        if (pos >= 0) {
-          var exp = rule.substr(pos + 1, rule.length);
-          rule = rule.substr(0, pos);
-        } else {
-          rule = rule.substr(pos + 1, rule.length);
-        }
-
-        switch (rule) {
-          case 'required':
-            if (i.val() === '') {
-              ferror = ierror = true;
-            }
-            break;
-
-          case 'minlen':
-            if (i.val().length < parseInt(exp)) {
-              ferror = ierror = true;
-            }
-            break;
-        }
-        i.next('.validate').html((ierror ? (i.attr('data-msg') != undefined ? i.attr('data-msg') : 'wrong Input') : '')).show('blind');
-      }
-    });
-    if (ferror) return false;
 
     var this_form = $(this);
-    var action = $(this).attr('action');
+    var action = this_form.attr('action');
+    var recaptcha = this_form.attr('data-recaptcha-site-key');
 
-    if( ! action ) {
-      this_form.find('.loading').slideUp();
-      this_form.find('.error-message').slideDown().html('The form action property is not set!');
-      return false;
+    if (!action) {
+      displayError(this_form, 'The form action property is not set!')
+      return;
     }
-    
-    this_form.find('.sent-message').slideUp();
-    this_form.find('.error-message').slideUp();
-    this_form.find('.loading').slideDown();
 
-    if ( $(this).data('recaptcha-site-key') ) {
-      var recaptcha_site_key = $(this).data('recaptcha-site-key');
+    this_form.find('.loading').slideDown();
+    this_form.find('.error-message').slideUp();
+    this_form.find('.sent-message').slideUp();
+
+    var formData = new FormData(this_form.get(0));
+
+    if (recaptcha) {
       grecaptcha.ready(function() {
-        grecaptcha.execute(recaptcha_site_key, {action: 'php_email_form_submit'}).then(function(token) {
-          php_email_form_submit(this_form,action,this_form.serialize() + '&recaptcha-response=' + token);
+        grecaptcha.execute(recaptcha, {
+          action: 'php_email_form_submit'
+        }).then(function(token) {
+          formData.append('recaptcha-response', token);
+          send_form(this_form, action, formData);
         });
       });
     } else {
-      php_email_form_submit(this_form,action,this_form.serialize());
+      send_form(this_form, action, formData);
     }
-    
-    return true;
   });
 
-  function php_email_form_submit(this_form, action, data) {
+  function send_form(this_form, action, formData) {
     $.ajax({
       type: "POST",
       url: action,
-      data: data,
-      timeout: 40000
-    }).done( function(msg){
-      if (msg.trim() == 'OK') {
-        this_form.find('.loading').slideUp();
-        this_form.find('.sent-message').slideDown();
-        this_form.find("input:not(input[type=submit]), textarea").val('');
-      } else {
-        this_form.find('.loading').slideUp();
-        if(!msg) {
-          msg = 'Form submission failed and no error message returned from: ' + action + '<br>';
+      data: formData,
+      processData: false,
+      contentType: false,
+      dataType: 'text',
+      success: function(response) {
+        if (response.trim() === 'OK') {
+          displaySuccess(this_form);
+        } else {
+          displaySuccess(this_form, response);
         }
-        this_form.find('.error-message').slideDown().html(msg);
+      },
+      error: function(xhr) {
+        displayError(this_form, xhr.responseText);
       }
-    }).fail( function(data){
-      console.log(data);
-      var error_msg = "Form submission failed!<br>";
-      if(data.statusText || data.status) {
-        error_msg += 'Status:';
-        if(data.statusText) {
-          error_msg += ' ' + data.statusText;
-        }
-        if(data.status) {
-          error_msg += ' ' + data.status;
-        }
-        error_msg += '<br>';
-      }
-      if(data.responseText) {
-        error_msg += data.responseText;
-      }
-      this_form.find('.loading').slideUp();
-      this_form.find('.error-message').slideDown().html(error_msg);
     });
+  }
+
+  function displaySuccess(this_form, message) {
+    this_form.find('.loading').slideUp('fast');
+    if (message) {
+      this_form.find('.sent-message').html(message).slideDown('fast');
+    } else {
+      this_form.find('.sent-message').slideDown('fast');
+    }
+
+    // If on the cart page, hide the cart contents after successful submission
+    if (this_form.closest('.inner-page').length) { // A simple way to detect if we are on cart.php
+      $('#cart-contents').slideUp();
+    }
+
+    this_form.find('input:not([type=submit]), textarea').val('');
+  }
+
+  function displayError(this_form, error) {
+    this_form.find('.loading').slideUp('fast');
+    this_form.find('.error-message').html(error).slideDown('fast');
   }
 
 })(jQuery);

@@ -15,6 +15,6 @@ define('DB_NAME', 'nush_db');
 // --- Email Configuration (for PHPMailer) ---
 define('SMTP_USERNAME', 'sharmaram920@gmail.com'); // Your Gmail address (e.g., your.email@gmail.com)
 define('SMTP_PASSWORD', 'yulwyjeylicpnqmg'); // !!! CHANGE THIS to your 16-character Gmail App Password !!!
-define('ADMIN_EMAIL_RECIPIENT', 'sharmaram36987@gmail.com'); // The email address where admin inquiries are sent
+define('ADMIN_EMAIL_RECIPIENT', 'sharmaram920@gmail.com'); // The email address where admin inquiries are sent
 define('COMPANY_NAME', 'NUSH MECHANICAL & FABRICATOR WORKS'); // Your company name, used in emails
 ?>

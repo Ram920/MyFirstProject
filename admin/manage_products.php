@@ -1,32 +1,25 @@
 <?php
 session_start();
 
-// --- Session Timeout (15 minutes) ---
+// --- Session Security Check ---
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 900)) {
     session_unset(); session_destroy();
-    header("Location: index.php"); // Force redirect to login page
-    exit;
 }
-
-require_once __DIR__ . '/../db_connect.php';
-require_once 'config.php'; // Include configuration
-require_once 'functions.php'; // Include the new functions file
 
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     header("Location: index.php");
     exit;
 }
 
-// If we've reached here, the user is logged in. Now we can update their activity time.
 $_SESSION['last_activity'] = time();
+
+require_once __DIR__ . '/../db_connect.php';
+require_once 'config.php'; // Include configuration
+require_once 'functions.php'; // Include the new functions file
 
 // --- Handle Add Product ---
 $message = '';
 if (isset($_POST['add_product'])) {
-    $name = $conn->real_escape_string($_POST['name']);
-    $category = $conn->real_escape_string($_POST['category']);
-    $description = $conn->real_escape_string($_POST['description']);
-    
     if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
         $target_dir = "../assets/img/portfolio/";
         $image_name = time() . '_' . basename($_FILES["image"]["name"]); // Create a unique name

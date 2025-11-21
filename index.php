@@ -643,7 +643,10 @@
                     if(response.success) {
                         // Update the cart count in the header
                         $('#cart-count').text(response.cart_count);
-                        // You could add a visual confirmation here, e.g., a toast message
+                        
+                        // Show toast notification
+                        var toast = $('#toast-notification');
+                        toast.fadeIn(400).delay(2500).fadeOut(400); // Show for 2.5 seconds
                     } else {
                         alert('Error: ' + response.message);
                     }
@@ -652,6 +655,9 @@
         });
     });
     </script>
+    
+    <!-- Toast Notification -->
+    <div id="toast-notification" class="toast-notification">Product added to basket!</div>
     <?php
       // Close the database connection at the very end of the script.
       $conn->close();

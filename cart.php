@@ -72,6 +72,7 @@ require_once 'db_connect.php';   // Connect to the database
                 if (empty($cart_items)) {
                     echo "<p>Your quote basket is empty. Please add products from our portfolio.</p>";
                 } else {
+                echo '<div id="cart-contents">'; // Start of the wrapper div
                 ?>
                     <?php
                     // Prepare WhatsApp message only if the cart is not empty
@@ -175,6 +176,7 @@ require_once 'db_connect.php';   // Connect to the database
                         <div class="text-center"><button type="submit" name="submit">Enquire Now</button></div>
                     </form>
                 <?php 
+                echo '</div>'; // End of the wrapper div
                 } // end of else
                 ?>
             </div>
@@ -197,6 +199,7 @@ require_once 'db_connect.php';   // Connect to the database
     <script src="assets/vendor/jquery/jquery.min.js"></script>
     <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="assets/vendor/jquery.easing/jquery.easing.min.js"></script>
+    <script src="assets/vendor/php-email-form/validate.js"></script>
     <script src="assets/vendor/venobox/venobox.min.js"></script>
     <script src="assets/vendor/isotope-layout/isotope.pkgd.min.js"></script>
     <script src="assets/vendor/aos/aos.js"></script>

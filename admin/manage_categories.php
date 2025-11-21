@@ -1,23 +1,21 @@
 <?php
 session_start();
 
-// --- Session Timeout (15 minutes) ---
+// --- Session Security Check ---
 if (isset($_SESSION['last_activity']) && (time() - $_SESSION['last_activity'] > 900)) {
-    session_unset(); session_destroy();
-    header("Location: index.php"); // Force redirect to login page
-    exit;
+    session_unset(); 
+    session_destroy();
 }
-
-require_once __DIR__ . '/../db_connect.php';
-require_once 'config.php'; // Include configuration
 
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     header("Location: index.php");
     exit;
 }
 
-// If we've reached here, the user is logged in. Now we can update their activity time.
 $_SESSION['last_activity'] = time();
+
+require_once __DIR__ . '/../db_connect.php';
+require_once 'config.php'; // Include configuration
 
 $message = '';
 // Handle Add Category
