@@ -14,6 +14,15 @@
   $stmt = $conn->prepare("INSERT INTO site_visits (visit_date, visit_count) VALUES (?, 1) ON DUPLICATE KEY UPDATE visit_count = visit_count + 1");
   $stmt->bind_param("s", $today);
   $stmt->execute();
+
+  // --- Fetch dynamic website settings ---
+  $youtube_url_result = $conn->query("SELECT setting_value FROM site_settings WHERE setting_key = 'youtube_video_url'");
+  $youtube_url = $youtube_url_result->fetch_assoc()['setting_value'] ?? 'https://www.youtube.com/watch?v=jDDaplaOz7Q'; // Fallback URL
+
+  $clients_result = $conn->query("SELECT * FROM clients ORDER BY id DESC");
+
+  $team_members_result = $conn->query("SELECT * FROM team_members ORDER BY display_order ASC, id ASC");
+
   // Do NOT close the connection here. It will be closed later in the script.
 ?>
 <!DOCTYPE html>
@@ -45,6 +54,7 @@
 
   <!-- Template Main CSS File -->
   <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/custom.css" rel="stylesheet">
     <link href="assets/css/about.css" rel="stylesheet">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.1/css/all.min.css">
@@ -65,7 +75,9 @@
 
       <!--<h1 class="logo"><a href="index.html">Dewi</a></h1>-->
       <!-- Uncomment below if you prefer to use an image logo -->
-      <a href="index.php" class="logo"><img src="images/Logo.png" alt="Logo" class="img-fluid" width="90px" height="50px"></a>
+      <a href="index.php" class="logo">
+        <img src="images/Logo-white.png" alt="NUSH MECHANICAL Logo" class="img-fluid">
+      </a>
 
       <nav class="nav-menu d-none d-lg-block">
         <ul>
@@ -156,7 +168,7 @@
 
           <div class="col-lg-6 video-box align-self-baseline" data-aos="zoom-in" data-aos-delay="100">
             <img src="assets/img/about.jpg" class="img-fluid" alt="">
-            <a href="https://www.youtube.com/watch?v=jDDaplaOz7Q" class="venobox play-btn mb-4" data-vbtype="video" data-autoplay="true"></a>
+            <a href="<?php echo htmlspecialchars($youtube_url); ?>" class="venobox play-btn mb-4" data-vbtype="video" data-autoplay="true"></a>
           </div>
 
           <div class="col-lg-6 pt-3 pt-lg-0 content">
@@ -207,17 +219,11 @@
 
         <div class="row">
 
+          <?php while ($client = $clients_result->fetch_assoc()): ?>
           <div class="col-lg-2 col-md-4 col-6 d-flex align-items-center justify-content-center">
-            <img src="assets/img/clients/client-1.png" class="img-fluid" alt="">
+            <img src="assets/img/clients/<?php echo htmlspecialchars($client['image']); ?>" class="img-fluid" alt="<?php echo htmlspecialchars($client['name']); ?>">
           </div>
-
-          <div class="col-lg-2 col-md-4 col-6 d-flex align-items-center justify-content-center">
-            <img src="assets/img/clients/client-2.png" class="img-fluid" alt="">
-            </div>
-          <div class="col-lg-2 col-md-4 col-6 d-flex align-items-center justify-content-center">
-            <img src="assets/img/clients/client-3.png" class="img-fluid" alt="">
-            </div>
-
+          <?php endwhile; ?>
         </div>
 
       </div>
@@ -236,44 +242,44 @@
         <div class="row" data-aos="fade-up" data-aos-delay="200">
           <div class="col-md-6">
             <div class="icon-box">
-              <i class="icofont-computer"></i>
-              <h4><a href="#">Lorem Ipsum</a></h4>
-              <p>Voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident</p>
-            </div>
-          </div>
-          <div class="col-md-6 mt-4 mt-md-0">
-            <div class="icon-box">
-              <i class="icofont-chart-bar-graph"></i>
-              <h4><a href="#">Dolor Sitema</a></h4>
-              <p>Minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat tarad limino ata</p>
-            </div>
-          </div>
-          <div class="col-md-6 mt-4 mt-md-0">
-            <div class="icon-box">
-              <i class="icofont-image"></i>
-              <h4><a href="#">Sed ut perspiciatis</a></h4>
-              <p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur</p>
-            </div>
-          </div>
-          <div class="col-md-6 mt-4 mt-md-0">
-            <div class="icon-box">
               <i class="icofont-settings"></i>
-              <h4><a href="#">Nemo Enim</a></h4>
-              <p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum</p>
+              <h4><a href="#">Hydraulic Machine Manufacturing</a></h4>
+              <p>We specialize in designing and manufacturing a wide range of custom hydraulic presses, cylinders, and power packs to meet your specific industrial requirements.</p>
             </div>
           </div>
           <div class="col-md-6 mt-4 mt-md-0">
             <div class="icon-box">
-              <i class="icofont-earth"></i>
-              <h4><a href="#">Magni Dolore</a></h4>
-              <p>At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque</p>
+              <i class="icofont-automation"></i>
+              <h4><a href="#">Conveyor Systems</a></h4>
+              <p>We provide robust and efficient conveyor systems, designed to streamline your production line and material handling processes for maximum productivity.</p>
+            </div>
+          </div>
+          <div class="col-md-6 mt-4 mt-md-0">
+            <div class="icon-box">
+              <i class="icofont-industries-alt-2"></i>
+              <h4><a href="#">Custom Fabrication Works</a></h4>
+              <p>Our expert team offers high-quality metal fabrication services, creating custom parts and structures with precision and durability for any application.</p>
+            </div>
+          </div>
+          <div class="col-md-6 mt-4 mt-md-0">
+            <div class="icon-box">
+              <i class="icofont-tools-alt-2"></i>
+              <h4><a href="#">Hydraulic SPM Machines</a></h4>
+              <p>We build Special Purpose Machines (SPM) powered by hydraulic systems, engineered for unique tasks and high-performance manufacturing challenges.</p>
+            </div>
+          </div>
+          <div class="col-md-6 mt-4 mt-md-0">
+            <div class="icon-box">
+              <i class="icofont-fast-delivery"></i>
+              <h4><a href="#">Material Handling Solutions</a></h4>
+              <p>From hydraulic lift tables to custom conveyors, we develop integrated solutions to improve your workflow and operational efficiency.</p>
             </div>
           </div>
           <div class="col-md-6 mt-4 mt-md-0">
             <div class="icon-box">
               <i class="icofont-tasks-alt"></i>
-              <h4><a href="#">Eiusmod Tempor</a></h4>
-              <p>Et harum quidem rerum facilis est et expedita distinctio. Nam libero tempore, cum soluta nobis est eligendi</p>
+              <h4><a href="#">Repair &amp; Maintenance</a></h4>
+              <p>We provide expert repair and maintenance services for hydraulic machinery and fabrication works to ensure longevity and optimal performance.</p>
             </div>
           </div>
         </div>
@@ -289,55 +295,55 @@
 
           <div class="testimonial-item">
             <img src="assets/img/testimonials/testimonials-1.jpg" class="testimonial-img" alt="">
-            <h3>Saul Goodman</h3>
-            <h4>Ceo &amp; Founder</h4>
+            <h3>Ratan Tata</h3>
+            <h4>Industrialist &amp; Mechanical Engineer</h4>
             <p>
               <i class="bx bxs-quote-alt-left quote-icon-left"></i>
-              Proin iaculis purus consequat sem cure digni ssim donec porttitora entum suscipit rhoncus. Accusantium quam, ultricies eget id, aliquam eget nibh et. Maecen aliquam, risus at semper.
+              I don't believe in taking the right decisions. I take decisions and then make then right.
               <i class="bx bxs-quote-alt-right quote-icon-right"></i>
             </p>
           </div>
 
           <div class="testimonial-item">
             <img src="assets/img/testimonials/testimonials-2.jpg" class="testimonial-img" alt="">
-            <h3>Sara Wilsson</h3>
-            <h4>Designer</h4>
+            <h3>Henry Ford</h3>
+            <h4>Founder, Ford Motor Company</h4>
             <p>
               <i class="bx bxs-quote-alt-left quote-icon-left"></i>
-              Export tempor illum tamen malis malis eram quae irure esse labore quem cillum quid cillum eram malis quorum velit fore eram velit sunt aliqua noster fugiat irure amet legam anim culpa.
+              Quality means doing it right when no one is looking.
               <i class="bx bxs-quote-alt-right quote-icon-right"></i>
             </p>
           </div>
 
           <div class="testimonial-item">
             <img src="assets/img/testimonials/testimonials-3.jpg" class="testimonial-img" alt="">
-            <h3>Jena Karlis</h3>
-            <h4>Store Owner</h4>
+            <h3>Dr. A.P.J.Abdul Kalam</h3>
+            <h4>Aerospace Engineer &amp; Scientist</h4>
             <p>
               <i class="bx bxs-quote-alt-left quote-icon-left"></i>
-              Enim nisi quem export duis labore cillum quae magna enim sint quorum nulla quem veniam duis minim tempor labore quem eram duis noster aute amet eram fore quis sint minim.
+              Excellence is a continuous process and not an accident.
               <i class="bx bxs-quote-alt-right quote-icon-right"></i>
             </p>
           </div>
 
           <div class="testimonial-item">
             <img src="assets/img/testimonials/testimonials-4.jpg" class="testimonial-img" alt="">
-            <h3>Matt Brandon</h3>
-            <h4>Freelancer</h4>
+            <h3>Elon Musk</h3>
+            <h4>Engineer, innovator &amp; manufacturer</h4>
             <p>
               <i class="bx bxs-quote-alt-left quote-icon-left"></i>
-              Fugiat enim eram quae cillum dolore dolor amet nulla culpa multos export minim fugiat minim velit minim dolor enim duis veniam ipsum anim magna sunt elit fore quem dolore labore illum veniam.
+              Engineering is the closet thing to magic that exists in the world.
               <i class="bx bxs-quote-alt-right quote-icon-right"></i>
             </p>
           </div>
 
           <div class="testimonial-item">
             <img src="assets/img/testimonials/testimonials-5.jpg" class="testimonial-img" alt="">
-            <h3>John Larson</h3>
-            <h4>Entrepreneur</h4>
+            <h3>Isambard Kingdom Brunel</h3>
+            <h4>Mechanical/Civil Engineer</h4>
             <p>
               <i class="bx bxs-quote-alt-left quote-icon-left"></i>
-              Quis quorum aliqua sint quem legam fore sunt eram irure aliqua veniam tempor noster veniam enim culpa labore duis sunt culpa nulla illum cillum fugiat legam esse veniam culpa fore nisi cillum quid.
+              I am opposed to the idea of impossibilities.
               <i class="bx bxs-quote-alt-right quote-icon-right"></i>
             </p>
           </div>
@@ -419,38 +425,23 @@
         </div>
           
         <div class="row">
-
-          <div class="col-lg-4 col-md-6">
+          <?php while ($member = $team_members_result->fetch_assoc()): ?>
+          <div class="col-lg-4 col-md-6 d-flex align-items-stretch">
             <div class="member" data-aos="fade-up" data-aos-delay="100">
-              <div class="pic"><img src="assets/img/team/Team1-1.png" class="img-fluid" alt=""></div>
+              <div class="pic"><img src="assets/img/team/<?php echo htmlspecialchars($member['image']); ?>" class="img-fluid" alt="<?php echo htmlspecialchars($member['name']); ?>"></div>
               <div class="member-info">
-                <h4>Rameshwar Sharma</h4>
-                <span>Chief Executive Officer</span>
+                <h4><?php echo htmlspecialchars($member['name']); ?></h4>
+                <span><?php echo htmlspecialchars($member['position']); ?></span>
                 <div class="social">
-                  <!--<a href=""><i class="icofont-twitter"></i></a>
-                  <a href=""><i class="icofont-facebook"></i></a>
-                  <a href=""><i class="icofont-instagram"></i></a>
-                  <a href=""><i class="icofont-linkedin"></i></a>-->
+                  <?php if (!empty($member['twitter_url'])): ?><a href="<?php echo htmlspecialchars($member['twitter_url']); ?>" target="_blank"><i class="icofont-twitter"></i></a><?php endif; ?>
+                  <?php if (!empty($member['facebook_url'])): ?><a href="<?php echo htmlspecialchars($member['facebook_url']); ?>" target="_blank"><i class="icofont-facebook"></i></a><?php endif; ?>
+                  <?php if (!empty($member['instagram_url'])): ?><a href="<?php echo htmlspecialchars($member['instagram_url']); ?>" target="_blank"><i class="icofont-instagram"></i></a><?php endif; ?>
+                  <?php if (!empty($member['linkedin_url'])): ?><a href="<?php echo htmlspecialchars($member['linkedin_url']); ?>" target="_blank"><i class="icofont-linkedin"></i></a><?php endif; ?>
                 </div>
               </div>
             </div>
           </div>
-
-          <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
-            <div class="member">
-              <div class="pic"><img src="assets/img/team/Team1-2.png" class="img-fluid" alt=""></div>
-              <div class="member-info">
-                <h4>Anil Sharma</h4>
-                <span>Product Manager</span>
-                <div class="social">
-                  <!--<a href=""><i class="icofont-twitter"></i></a>-->
-                  <a href=""><i class="icofont-facebook"></i></a>
-                  <!--<a href=""><i class="icofont-instagram"></i></a>
-                  <a href=""><i class="icofont-linkedin"></i></a>-->
-                </div>
-              </div>
-            </div>
-          </div>
+          <?php endwhile; ?>
 
         </div>
 

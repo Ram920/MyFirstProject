@@ -1,0 +1,6 @@
+/* Custom styles for generated quotes */
+
+.quote-logo {
+    max-width: 150px; /* Adjust this value to your desired standard logo width for quotes */
+    height: auto; /* Maintain aspect ratio */
+}

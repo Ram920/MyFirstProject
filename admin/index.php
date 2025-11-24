@@ -125,13 +125,46 @@ while ($row = $inquiry_type_result->fetch_assoc()) {
     <div class="row">
         <!-- Management Links -->
         <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">Management</div>
+            <!-- Product Management Card -->
+            <div class="card mb-4">
+                <div class="card-header">Product Management</div>
                 <div class="list-group list-group-flush">
                     <a href="manage_products.php" class="list-group-item list-group-item-action">Manage Products</a>
                     <a href="manage_categories.php" class="list-group-item list-group-item-action">Manage Categories</a>
-                    <a href="view_enquiries.php" class="list-group-item list-group-item-action">View Enquiries</a>
+                </div>
+            </div>
+
+            <!-- Billing & Quotations Card -->
+            <div class="card mb-4">
+                <div class="card-header">Billing &amp; Quotations</div>
+                <div class="list-group list-group-flush">
+                    <a href="create_bill.php" class="list-group-item list-group-item-action">Create New Bill</a>
+                    <a href="manage_bills.php" class="list-group-item list-group-item-action">Manage Bills</a>
                     <a href="generate_quote.php" class="list-group-item list-group-item-action" target="_blank">Create Custom Quote</a>
+                </div>
+            </div>
+
+            <!-- Website Content Card -->
+            <div class="card mb-4">
+                <div class="card-header">Website Content</div>
+                <div class="list-group list-group-flush">
+                    <a href="manage_website.php" class="list-group-item list-group-item-action">Manage Website</a>
+                </div>
+            </div>
+
+            <!-- Team Management Card -->
+            <div class="card mb-4">
+                <div class="card-header">Team Management</div>
+                <div class="list-group list-group-flush">
+                    <a href="manage_team.php" class="list-group-item list-group-item-action">Manage Team</a>
+                </div>
+            </div>
+
+            <!-- Enquiries Card -->
+            <div class="card mb-4">
+                <div class="card-header">Customer Enquiries</div>
+                <div class="list-group list-group-flush">
+                    <a href="view_enquiries.php" class="list-group-item list-group-item-action">View Enquiries</a>
                 </div>
             </div>
         </div>

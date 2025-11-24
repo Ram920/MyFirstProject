@@ -30,13 +30,16 @@ require_once 'db_connect.php';   // Connect to the database
     <link href="assets/vendor/owl.carousel/assets/owl.carousel.min.css" rel="stylesheet">
     <link href="assets/vendor/aos/aos.css" rel="stylesheet">
     <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/custom.css" rel="stylesheet">
 </head>
 <body>
 
     <!-- ======= Header ======= -->
     <header id="header" class="fixed-top header-inner-pages">
         <div class="container-fluid d-flex align-items-center justify-content-between">
-            <a href="index.php" class="logo"><img src="images/Logo.png" alt="Logo" class="img-fluid"></a>
+            <a href="index.php" class="logo">
+                <img src="images/Logo.png" alt="NUSH MECHANICAL Logo" class="img-fluid">
+            </a>
             <nav class="nav-menu d-none d-lg-block">
                 <ul>
                     <li><a href="index.php">Home</a></li>

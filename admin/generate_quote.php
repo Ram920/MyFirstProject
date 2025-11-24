@@ -68,7 +68,7 @@ if ($inquiry_id > 0) {
             margin-bottom: 30px;
         }
         .letterhead-header img {
-            max-width: 150px;
+            max-width: 100px;
             margin-bottom: 10px;
         }
         .letterhead-header h1 {
