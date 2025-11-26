@@ -47,8 +47,12 @@ $alert = '';
       $errors[] = "A valid email address is required.";
   }
 
-  if (!empty($phone) && !preg_match("/^[+]?[\d\s-]{7,15}$/", $phone)) {
+  if (!empty($phone) && !preg_match("/^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/", $phone)) {
       $errors[] = "Please enter a valid phone number.";
+  }
+
+  if (!empty($quantity) && !ctype_digit($quantity)) {
+      $errors[] = "Quantity must be a number.";
   }
   
   if (empty($subject)) {
@@ -63,9 +67,8 @@ $alert = '';
   }
 
   if (!empty($errors)) {
-      // For AJAX, echo the error and stop
-      http_response_code(400); // Bad Request
-      echo implode("\n", $errors);
+      // For AJAX forms, echo the errors as a string and stop execution.
+      echo implode("<br>", $errors);
       exit;
   } else {
       try{
@@ -189,18 +192,16 @@ $alert = '';
         if (isset($_SESSION['cart'])) {
             $_SESSION['cart'] = [];
         }
-
-        // For AJAX, echo OK and stop
-        if ($inquiry_type === 'Quote Basket Email') {
-            echo 'Your quote request has been successfully sent! We have received your inquiry and will get back to you shortly. Kindly wait for our response.';
-        } else {
-            echo 'OK'; // Default success message for general contact form
-        }
+        echo "OK"; // Indicate success to the AJAX call
+        exit;
+        
       } catch (Exception $e){
-        // Don't show detailed errors to the user for security reasons.
+        // Log the actual error for debugging, but don't show it to the user.
         error_log("PHPMailer Error: " . $mail->ErrorInfo); // Log the actual error for debugging
-        http_response_code(500); // Internal Server Error
+        // Return a generic error message for the AJAX call
+        http_response_code(500); // Set a server error status code
         echo 'Something went wrong. Please try again later.';
+        exit;
       }
   }
 ?>

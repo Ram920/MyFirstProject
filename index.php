@@ -23,6 +23,9 @@
 
   $team_members_result = $conn->query("SELECT * FROM team_members ORDER BY display_order ASC, id ASC");
 
+  $catalog_pdf_result = $conn->query("SELECT setting_value FROM site_settings WHERE setting_key = 'catalog_pdf_url'");
+  $catalog_pdf_url = $catalog_pdf_result->fetch_assoc()['setting_value'] ?? '';
+
   // Do NOT close the connection here. It will be closed later in the script.
 ?>
 <!DOCTYPE html>
@@ -56,6 +59,16 @@
   <link href="assets/css/style.css" rel="stylesheet">
     <link href="assets/css/custom.css" rel="stylesheet">
     <link href="assets/css/about.css" rel="stylesheet">
+    <style>
+        /* Custom styles for valid form fields */
+        .form-control.is-valid {
+            border-color: #28a745; /* Green border */
+        }
+        .form-control.is-valid:focus {
+            border-color: #28a745;
+            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+        }
+    </style>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.1/css/all.min.css">
 
@@ -86,8 +99,8 @@
           <li><a href="#services">Services</a></li>
           <li><a href="#portfolio">Portfolio</a></li>
           <li><a href="#team">Team</a></li>
-          <li><a href="cart.php" id="quote-basket-link">Quote Basket (<span id="cart-count"><?php echo count($_SESSION['cart'] ?? []); ?></span>)</a></li>
           <li><a href="#contact">Contact</a></li>
+          <li><a href="cart.php" id="quote-basket-link">Quote Basket (<span id="cart-count"><?php echo count($_SESSION['cart'] ?? []); ?></span>)</a></li>
 
         </ul>
       </nav><!-- .nav-menu -->
@@ -101,7 +114,7 @@
   <section id="hero">
     <div class="hero-container" data-aos="fade-up" data-aos-delay="150">
       <h1>NUSH MECHANICAL &amp; FABRICATOR WORKS</h1>
-      <h2>We have a team of talented workers</h2>
+      <h2>Precision Engineering & Fabrication by a Team of Dedicated Experts.</h2>
       <div class="d-flex">
        <!-- <a href="#about" class="btn-get-started scrollto">Get Started</a>-->
        <!--<a href="https://www.youtube.com/watch?v=jDDaplaOz7Q" class="venobox btn-watch-video" data-vbtype="video" data-autoplay="true"> Watch Video <i class="icofont-play-alt-2"></i></a>-->
@@ -243,42 +256,42 @@
           <div class="col-md-6">
             <div class="icon-box">
               <i class="icofont-settings"></i>
-              <h4><a href="#">Hydraulic Machine Manufacturing</a></h4>
+              <h4>Hydraulic Machine Manufacturing</h4>
               <p>We specialize in designing and manufacturing a wide range of custom hydraulic presses, cylinders, and power packs to meet your specific industrial requirements.</p>
             </div>
           </div>
           <div class="col-md-6 mt-4 mt-md-0">
             <div class="icon-box">
               <i class="icofont-automation"></i>
-              <h4><a href="#">Conveyor Systems</a></h4>
+              <h4>Conveyor Systems</h4>
               <p>We provide robust and efficient conveyor systems, designed to streamline your production line and material handling processes for maximum productivity.</p>
             </div>
           </div>
           <div class="col-md-6 mt-4 mt-md-0">
             <div class="icon-box">
               <i class="icofont-industries-alt-2"></i>
-              <h4><a href="#">Custom Fabrication Works</a></h4>
+              <h4>Custom Fabrication Works</h4>
               <p>Our expert team offers high-quality metal fabrication services, creating custom parts and structures with precision and durability for any application.</p>
             </div>
           </div>
           <div class="col-md-6 mt-4 mt-md-0">
             <div class="icon-box">
               <i class="icofont-tools-alt-2"></i>
-              <h4><a href="#">Hydraulic SPM Machines</a></h4>
+              <h4>Hydraulic SPM Machines</h4>
               <p>We build Special Purpose Machines (SPM) powered by hydraulic systems, engineered for unique tasks and high-performance manufacturing challenges.</p>
             </div>
           </div>
           <div class="col-md-6 mt-4 mt-md-0">
             <div class="icon-box">
               <i class="icofont-fast-delivery"></i>
-              <h4><a href="#">Material Handling Solutions</a></h4>
+              <h4>Material Handling Solutions</h4>
               <p>From hydraulic lift tables to custom conveyors, we develop integrated solutions to improve your workflow and operational efficiency.</p>
             </div>
           </div>
           <div class="col-md-6 mt-4 mt-md-0">
             <div class="icon-box">
               <i class="icofont-tasks-alt"></i>
-              <h4><a href="#">Repair &amp; Maintenance</a></h4>
+              <h4>Repair &amp; Maintenance</h4>
               <p>We provide expert repair and maintenance services for hydraulic machinery and fabrication works to ensure longevity and optimal performance.</p>
             </div>
           </div>
@@ -287,13 +300,35 @@
       </div>
     </section><!-- End Services Section -->
 
+    <!-- ======= Catalog Section ======= -->
+    <?php if (!empty($catalog_pdf_url)): ?>
+    <section id="catalog" class="catalog">
+      <div class="container" data-aos="fade-up">
+
+        <div class="section-title">
+          <h2>Catalog</h2>
+          <p>Download Our Catalog</p>
+        </div>
+
+        <div class="row">
+          <div class="col-md-12 text-center">
+            <p>Get detailed information about all our products and services by downloading our complete catalog.</p>
+            <a href="<?php echo htmlspecialchars($catalog_pdf_url); ?>" class="btn-get-started" download>Download Catalog (PDF)</a>
+          </div>
+        </div>
+
+      </div>
+    </section>
+    <?php endif; ?>
+    <!-- End Catalog Section -->
+
     <!-- ======= Testimonials Section ======= -->
     <section id="testimonials" class="testimonials">
       <div class="container" data-aos="zoom-in">
 
         <div class="owl-carousel testimonials-carousel">
 
-          <div class="testimonial-item">
+          <div class="testimonial-item" style="cursor: default;">
             <img src="assets/img/testimonials/testimonials-1.jpg" class="testimonial-img" alt="">
             <h3>Ratan Tata</h3>
             <h4>Industrialist &amp; Mechanical Engineer</h4>
@@ -304,7 +339,7 @@
             </p>
           </div>
 
-          <div class="testimonial-item">
+          <div class="testimonial-item" style="cursor: default;">
             <img src="assets/img/testimonials/testimonials-2.jpg" class="testimonial-img" alt="">
             <h3>Henry Ford</h3>
             <h4>Founder, Ford Motor Company</h4>
@@ -315,7 +350,7 @@
             </p>
           </div>
 
-          <div class="testimonial-item">
+          <div class="testimonial-item" style="cursor: default;">
             <img src="assets/img/testimonials/testimonials-3.jpg" class="testimonial-img" alt="">
             <h3>Dr. A.P.J.Abdul Kalam</h3>
             <h4>Aerospace Engineer &amp; Scientist</h4>
@@ -326,7 +361,7 @@
             </p>
           </div>
 
-          <div class="testimonial-item">
+          <div class="testimonial-item" style="cursor: default;">
             <img src="assets/img/testimonials/testimonials-4.jpg" class="testimonial-img" alt="">
             <h3>Elon Musk</h3>
             <h4>Engineer, innovator &amp; manufacturer</h4>
@@ -337,7 +372,7 @@
             </p>
           </div>
 
-          <div class="testimonial-item">
+          <div class="testimonial-item" style="cursor: default;">
             <img src="assets/img/testimonials/testimonials-5.jpg" class="testimonial-img" alt="">
             <h3>Isambard Kingdom Brunel</h3>
             <h4>Mechanical/Civil Engineer</h4>
@@ -490,23 +525,28 @@
 
         <div class="col-lg-6 mt-4 mt-lg-0">
             <?php echo $alert; ?>
-            <form action="sendemail.php" method="post" role="form" class="php-email-form">
+            <form action="sendemail.php" method="post" role="form" class="php-email-form" id="contact-form">
               <div class="form-row">
                 <div class="col-md-6 form-group">
                   <input type="text" name="name" class="form-control" id="name" placeholder="Your Name" required />
+                  <div class="invalid-feedback">Please enter your name (letters and spaces only).</div>
                 </div>
                 <div class="col-md-6 form-group">
                   <input type="email" class="form-control" name="email" id="email" placeholder="Your Email" required />
+                  <div class="invalid-feedback">Please enter a valid email address.</div>
                 </div>
               </div>
               <div class="form-group">
                 <input type="text" class="form-control" name="subject" id="subject" placeholder="Subject" required />
+                <div class="invalid-feedback">Subject is required.</div>
               </div>
               <div class="form-group">
-                <input type="tel" class="form-control" name="phone" id="phone" placeholder="Mobile (Optional)" />
+                <input type="tel" class="form-control" name="phone" id="phone" placeholder="Mobile (10 digits, Optional)" maxlength="10" pattern="[0-9]{10}" oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);" title="Please enter a 10-digit mobile number." />
+                <div class="invalid-feedback">Please enter a valid 10-digit mobile number.</div>
               </div>
               <div class="form-group">
                 <textarea class="form-control" name="message" rows="5" placeholder="Message" required></textarea>
+                <div class="invalid-feedback">Message is required.</div>
               </div>
               <div class="mb-3">
                 <div class="loading">Loading</div>
@@ -558,32 +598,13 @@
             </ul>
           </div>
 
-        <!--  <div class="col-lg-3 col-md-6 footer-links">
-            <h4>Our Services</h4>
-            <ul>
-              <li><i class="bx bx-chevron-right"></i> <a href="#">Web Design</a></li>
-              <li><i class="bx bx-chevron-right"></i> <a href="#">Web Development</a></li>
-              <li><i class="bx bx-chevron-right"></i> <a href="#">Product Management</a></li>
-              <li><i class="bx bx-chevron-right"></i> <a href="#">Marketing</a></li>
-              <li><i class="bx bx-chevron-right"></i> <a href="#">Graphic Design</a></li>
-            </ul>
-          </div>-->
-
-          <div class="col-lg-4 col-md-6 footer-newsletter">
-            <h4>Our Newsletter</h4>
-            <form action="mailto" method="post">
-              <input type="email" name="email"><input type="submit" value="Subscribe">
-            </form>
-
-          </div>
-
         </div>
       </div>
     </div>
 
     <div class="container">
       <div class="copyright">
-        &copy; Copyright <strong><span>NUSH MECHANICAL &amp; FABRICATOR WORKS</span></strong>. All Rights Reserved
+        &copy; Copyright <?php echo date("Y"); ?> <strong><span>NUSH MECHANICAL &amp; FABRICATOR WORKS</span></strong>. All Rights Reserved
       </div>
       <div class="credits">
         Designed by <a href="">Ramnarayan Sharma</a>
@@ -598,7 +619,6 @@
   <script src="assets/vendor/jquery/jquery.min.js"></script>
   <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
   <script src="assets/vendor/jquery.easing/jquery.easing.min.js"></script>
-  <script src="assets/vendor/php-email-form/validate.js"></script>
   <script src="assets/vendor/waypoints/jquery.waypoints.min.js"></script>
   <script src="assets/vendor/counterup/counterup.min.js"></script>
   <script src="assets/vendor/venobox/venobox.min.js"></script>
@@ -641,6 +661,98 @@
                     } else {
                         alert('Error: ' + response.message);
                     }
+                }
+            });
+        });
+    });
+
+    // --- Real-time validation for the main contact form ---
+    $(document).ready(function() {
+        const form = $('#contact-form');
+        const submitButton = form.find('button[type="submit"]');
+        const loadingDiv = form.find('.loading');
+        const errorDiv = form.find('.error-message');
+        const successDiv = form.find('.sent-message');
+
+        function validateField(field) {
+            const $field = $(field);
+            let isValid = true;
+            let value = $field.val().trim();
+
+            if ($field.prop('required') && value === '') {
+                isValid = false;
+            }
+
+            if (isValid && $field.attr('name') === 'email') {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(value)) isValid = false;
+            }
+
+            if (isValid && $field.attr('name') === 'phone' && value !== '') {
+                const phoneRegex = /^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/;
+                if (!phoneRegex.test(value)) isValid = false;
+            }
+
+            if (isValid) {
+                $field.removeClass('is-invalid').addClass('is-valid');
+            } else {
+                $field.removeClass('is-valid').addClass('is-invalid');
+            }
+            return isValid;
+        }
+
+        form.find('input[required], textarea[required], input[name="email"], input[name="phone"]').on('blur', function() {
+            validateField(this);
+        });
+
+        form.find('input, textarea').on('keyup', function() {
+            $(this).removeClass('is-invalid is-valid');
+        });
+
+        form.on('submit', function(e) {
+            e.preventDefault();
+
+            let isFormValid = true;
+            form.find('input[required], textarea[required], input[name="email"], input[name="phone"]').each(function() {
+                if (!validateField(this)) {
+                    isFormValid = false;
+                }
+            });
+
+            if (!isFormValid) {
+                errorDiv.html('Please fill in all required fields correctly.').show();
+                return;
+            }
+
+            loadingDiv.show();
+            errorDiv.hide();
+            successDiv.hide();
+            submitButton.prop('disabled', true);
+
+            var formData = new FormData(this);
+
+            $.ajax({
+                url: form.attr('action'),
+                type: form.attr('method'),
+                data: formData,
+                processData: false,
+                contentType: false,
+                dataType: 'text',
+                success: function(response) {
+                    loadingDiv.hide();
+                    if (response.trim() === 'OK') {
+                        successDiv.show();
+                        form[0].reset();
+                        form.find('.is-valid, .is-invalid').removeClass('is-valid is-invalid');
+                    } else {
+                        errorDiv.html(response).show();
+                    }
+                    submitButton.prop('disabled', false);
+                },
+                error: function(jqXHR) {
+                    loadingDiv.hide();
+                    errorDiv.html(jqXHR.responseText || 'An error occurred. Please try again.').show();
+                    submitButton.prop('disabled', false);
                 }
             });
         });

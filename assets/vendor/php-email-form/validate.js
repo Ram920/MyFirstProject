@@ -61,23 +61,35 @@
 
   function displaySuccess(this_form, message) {
     this_form.find('.loading').slideUp('fast');
-    if (message) {
-      this_form.find('.sent-message').html(message).slideDown('fast');
-    } else {
-      this_form.find('.sent-message').slideDown('fast');
-    }
-
-    // If on the cart page, hide the cart contents after successful submission
-    if (this_form.closest('.inner-page').length) { // A simple way to detect if we are on cart.php
+    
+    // If the submitted form is the quote-basket-form, handle message display differently
+    if (this_form.attr('id') === 'quote-basket-form') {
       $('#cart-contents').slideUp();
+
+      const successMessage = message ? message : this_form.find('.sent-message').text();
+      $('#quote-basket-success-message').html(successMessage).slideDown('fast');
+
+      // Scroll to the new message location
+      window.scrollToTarget($('#quote-basket-success-message'), 600);
+    } else {
+      // Default behavior for other forms
+      if (message) {
+        this_form.find('.sent-message').html(message).slideDown('fast');
+      } else {
+        this_form.find('.sent-message').slideDown('fast');
+      }
+      window.scrollToTarget(this_form, 600);
     }
 
+    // Clear form fields
     this_form.find('input:not([type=submit]), textarea').val('');
   }
 
   function displayError(this_form, error) {
     this_form.find('.loading').slideUp('fast');
     this_form.find('.error-message').html(error).slideDown('fast');
+    // Use the global scroll function from main.js
+    window.scrollToTarget(this_form, 600);
   }
 
 })(jQuery);

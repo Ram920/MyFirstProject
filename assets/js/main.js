@@ -207,4 +207,15 @@
     aos_init();
   });
 
+  // Global scroll-to-target function
+  window.scrollToTarget = function(target, speed = 1500) {
+    let offset = $('#header').outerHeight();
+    // Ensure offset is not negative and accounts for potential padding/margin
+    // A minimum offset can be useful for very small headers or when header is hidden
+    offset = Math.max(offset, 0); // Ensure offset is not negative
+
+    let scrollto = $(target).offset().top - offset;
+    $('html, body').animate({ scrollTop: scrollto }, speed, 'easeInOutExpo');
+  }
+
 })(jQuery);

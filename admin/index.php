@@ -149,6 +149,7 @@ while ($row = $inquiry_type_result->fetch_assoc()) {
                 <div class="card-header">Website Content</div>
                 <div class="list-group list-group-flush">
                     <a href="manage_website.php" class="list-group-item list-group-item-action">Manage Website</a>
+                    <a href="manage_catalog.php" class="list-group-item list-group-item-action">Manage Catalog (PDF)</a>
                 </div>
             </div>
 
@@ -157,6 +158,15 @@ while ($row = $inquiry_type_result->fetch_assoc()) {
                 <div class="card-header">Team Management</div>
                 <div class="list-group list-group-flush">
                     <a href="manage_team.php" class="list-group-item list-group-item-action">Manage Team</a>
+                </div>
+            </div>
+
+            <!-- Employee Management Card -->
+            <div class="card mb-4">
+                <div class="card-header">Human Resources</div>
+                <div class="list-group list-group-flush">
+                    <a href="manage_employees.php" class="list-group-item list-group-item-action">Manage Employees</a>
+                    <a href="manage_salaries.php" class="list-group-item list-group-item-action">Manage Salaries</a>
                 </div>
             </div>
 

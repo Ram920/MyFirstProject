@@ -149,7 +149,7 @@ $clients = $conn->query("SELECT * FROM clients ORDER BY id DESC");
                 <tbody>
                     <?php while ($row = $clients->fetch_assoc()): ?>
                         <tr>
-                            <td><img src="../assets/img/clients/<?php echo htmlspecialchars($row['image']); ?>" width="150" alt="<?php echo htmlspecialchars($row['name']); ?>"></td>
+                            <td class="align-middle"><img src="../assets/img/clients/<?php echo htmlspecialchars($row['image']); ?>" class="img-fluid" style="max-width: 100px; max-height: 50px; object-fit: contain;" alt="<?php echo htmlspecialchars($row['name']); ?>"></td>
                             <td><?php echo htmlspecialchars($row['name']); ?></td>
                             <td>
                                 <a href="manage_website.php?delete_client=<?php echo $row['id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this logo?')">Delete</a>
