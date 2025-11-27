@@ -1,0 +1,42 @@
+/* Custom Logo Styles */
+
+/* --- 1. Base Styling --- */
+/* Apply common size and transition to both logos */ 
+#header .logo img { 
+  max-height: 40px; /* Adjust this value to your preferred logo size */
+  width: auto;
+  transition: all 0.3s ease;
+}
+
+/* --- 2. Definitive Fix - Final --- */
+
+/* By default, the white logo is visible. */
+#header .logo .logo-white {
+  display: inline-block;
+}
+
+/* By default, the colored logo is hidden. This rule is specific but can be overridden. */
+#header .logo .logo-default {
+  display: none;
+}
+
+/* STATE 1: On scroll, show the colored logo. This is more specific than the default hide rule. */
+#header.header-scrolled .logo .logo-default {
+  display: inline-block;
+}
+/* On scroll, hide the white logo. */
+#header.header-scrolled .logo .logo-white {
+  display: none;
+}
+
+/* STATE 2: On hover over a dark background, swap the logos. These are also more specific. */
+/* Show colored logo on hover */
+#header:not(.header-scrolled) .logo:hover .logo-default,
+#header.header-inner-pages .logo:hover .logo-default {
+  display: inline-block;
+}
+/* Hide white logo on hover */
+#header:not(.header-scrolled) .logo:hover .logo-white,
+#header.header-inner-pages .logo:hover .logo-white {
+  display: none;
+}
