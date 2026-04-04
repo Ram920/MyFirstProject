@@ -21,14 +21,13 @@ $inquiry_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 if ($inquiry_id > 0) {
     // Fetch the inquiry details for an existing enquiry
-    $stmt = $conn->prepare("SELECT * FROM enquiries WHERE id = ?");
-    $stmt->bind_param("i", $inquiry_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($result->num_rows === 0) {
+    $stmt = $conn->prepare("SELECT * FROM enquiries WHERE id = :id");
+    $stmt->execute([':id' => $inquiry_id]);
+    $inquiry = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$inquiry) {
         exit('Enquiry not found.');
     }
-    $inquiry = $result->fetch_assoc();
 } else {
     // This is a new, custom quote. Create a blank inquiry array.
     $inquiry = [
@@ -48,6 +47,8 @@ if ($inquiry_id > 0) {
 <head>
     <meta charset="UTF-8">
     <title>Quotation - <?php echo COMPANY_NAME; ?></title>
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="../assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
@@ -145,13 +146,9 @@ if ($inquiry_id > 0) {
         <h5>To:</h5>
         <p>
             <strong><input type="text" class="form-control-plaintext d-inline" id="customer-name" value="<?php echo htmlspecialchars($inquiry['name']); ?>"></strong><br>
-            <?php if (!empty($inquiry['company_name'])): ?>
-                <input type="text" class="form-control-plaintext d-inline" id="customer-company" value="<?php echo htmlspecialchars($inquiry['company_name']); ?>"><br>
-            <?php endif; ?>
+            <input type="text" class="form-control-plaintext d-inline" id="customer-company" placeholder="Company Name" value="<?php echo htmlspecialchars($inquiry['company_name']); ?>"><br>
             Email: <input type="email" class="form-control-plaintext d-inline" id="customer-email" value="<?php echo htmlspecialchars($inquiry['email']); ?>"><br>
-            <?php if (!empty($inquiry['phone'])): ?>
-                Phone: <input type="tel" class="form-control-plaintext d-inline" id="customer-phone" value="<?php echo htmlspecialchars($inquiry['phone']); ?>"><br>
-            <?php endif; ?>
+            Phone: <input type="tel" class="form-control-plaintext d-inline" id="customer-phone" placeholder="Phone Number" value="<?php echo htmlspecialchars($inquiry['phone']); ?>"><br>
         </p>
     </div>
 
@@ -195,6 +192,11 @@ if ($inquiry_id > 0) {
             </tr>
         </tbody>
     </table>
+
+    <div class="amount-in-words-container mb-4">
+        <strong>Amount in words:</strong> <span id="amount-in-words" class="text-capitalize">Zero Only</span>
+    </div>
+
     <div class="no-print">
         <button id="add-row" class="btn btn-info btn-sm">Add Row</button>
     </div>
@@ -217,6 +219,7 @@ if ($inquiry_id > 0) {
 
     <div class="print-button no-print">
         <button class="btn btn-primary" onclick="window.print()">Print / Save as PDF</button>
+        <button id="generate-serverless-pdf" class="btn btn-info">Preview PDF (Serverless)</button>
         <button id="send-quote-btn" class="btn btn-success" data-email="<?php echo htmlspecialchars($inquiry['email']); ?>" data-name="<?php echo htmlspecialchars($inquiry['name']); ?>" data-quote-id="<?php echo $inquiry['id']; ?>">Send to Customer</button>
         <a href="view_enquiries.php" class="btn btn-secondary">Back to Enquiries</a>
         <div id="send-status" class="mt-3"></div>
@@ -226,6 +229,11 @@ if ($inquiry_id > 0) {
 
 <script src="../assets/vendor/jquery/jquery.min.js"></script>
 <script>
+    // Initialize Supabase client
+    const SUPABASE_URL = "<?php echo SUPABASE_URL; ?>";
+    const SUPABASE_ANON_KEY = "<?php echo SUPABASE_ANON_KEY; ?>";
+    const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 $(document).ready(function(){
     // --- DYNAMIC CALCULATIONS ---
     function calculateRow(row) {
@@ -245,6 +253,31 @@ $(document).ready(function(){
             }
         });
         $('#grand-total').text(total.toFixed(2));
+        $('#amount-in-words').text(numberToIndianWords(total) + ' Only');
+    }
+
+    function numberToIndianWords(num) {
+        const a = ['', 'one ', 'two ', 'three ', 'four ', 'five ', 'six ', 'seven ', 'eight ', 'nine ', 'ten ', 'eleven ', 'twelve ', 'thirteen ', 'fourteen ', 'fifteen ', 'sixteen ', 'seventeen ', 'eighteen ', 'nineteen '];
+        const b = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+
+        const n = ('000000000' + Math.floor(num)).substr(-9);
+        const matched = n.match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
+        if (!matched) return '';
+
+        let str = '';
+        str += matched[1] != 0 ? (a[Number(matched[1])] || b[matched[1][0]] + ' ' + a[matched[1][1]]) + 'crore ' : '';
+        str += matched[2] != 0 ? (a[Number(matched[2])] || b[matched[2][0]] + ' ' + a[matched[2][1]]) + 'lakh ' : '';
+        str += matched[3] != 0 ? (a[Number(matched[3])] || b[matched[3][0]] + ' ' + a[matched[3][1]]) + 'thousand ' : '';
+        str += matched[4] != 0 ? (a[Number(matched[4])] || b[matched[4][0]] + ' ' + a[matched[4][1]]) + 'hundred ' : '';
+        str += matched[5] != 0 ? ((str != '') ? 'and ' : '') + (a[Number(matched[5])] || b[matched[5][0]] + ' ' + a[matched[5][1]]) : '';
+        
+        // Handle Paisa (decimals)
+        const decimal = Math.round((num % 1) * 100);
+        if (decimal > 0) {
+            str += ' and ' + (a[decimal] || b[String(decimal)[0]] + ' ' + a[String(decimal)[1]]) + 'paise';
+        }
+
+        return str.trim() || 'zero';
     }
 
     // Calculate on input change
@@ -288,6 +321,51 @@ $(document).ready(function(){
         $('#dear-customer-name').text($(this).val());
     });
 
+    // --- SERVERLESS PDF PREVIEW ---
+    $('#generate-serverless-pdf').on('click', async function() {
+        const items = [];
+        $('.quote-table tbody tr').each(function() {
+            if ($(this).find('.product-description').length > 0) {
+                items.push({
+                    description: $(this).find('.product-description').val(),
+                    qty: parseFloat($(this).find('.product-qty').val()) || 0,
+                    rate: parseFloat($(this).find('.product-rate').val()) || 0,
+                    amount: parseFloat($(this).find('.product-amount').text()) || 0
+                });
+            }
+        });
+
+        const payload = {
+            customerName: $('#customer-name').val(),
+            quoteId: "<?php echo $inquiry['id']; ?>",
+            companyName: "<?php echo COMPANY_NAME; ?>",
+            grandTotal: $('#grand-total').text(),
+            items: items
+        };
+
+        $(this).prop('disabled', true).text('Generating...');
+
+        try {
+            const { data, error } = await sbClient.functions.invoke('generate-pdf', {
+                body: payload,
+            });
+
+            $(this).prop('disabled', false).text('Preview PDF (Serverless)');
+
+            if (error) {
+                alert('Error generating PDF: ' + error.message);
+            } else {
+                // Open the PDF in a new tab
+                const blob = new Blob([data], { type: 'application/pdf' });
+                const url = window.URL.createObjectURL(blob);
+                window.open(url);
+            }
+        } catch (err) {
+            $(this).prop('disabled', false).text('Preview PDF (Serverless)');
+            alert('An unexpected error occurred during PDF generation: ' + err.message);
+        }
+    });
+
     // Initial calculation on page load
     calculateTotal();
 
@@ -306,8 +384,8 @@ $(document).ready(function(){
         
         // Replace input fields with their values for a clean look in the email
         quoteHtml.find('input, textarea').each(function() {
-            var value = $(this).val();
-            $(this).parent().text(value);
+            // Replace the input/textarea element itself with its value as text
+            $(this).replaceWith(document.createTextNode($(this).val()));
         });
 
         // Get the current values from the editable fields
@@ -318,7 +396,7 @@ $(document).ready(function(){
             url: 'send_quote_email.php',
             type: 'POST',
             data: {
-                quote_html: quoteHtml.html(),
+                quote_html: quoteHtml[0].outerHTML,
                 customer_email: customerEmail,
                 customer_name: customerName,
                 quote_id: button.data('quote-id')
@@ -342,333 +420,4 @@ $(document).ready(function(){
 </script>
 </body>
 </html>
-<?php $conn->close(); ?>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
--
+<?php $conn = null; ?>

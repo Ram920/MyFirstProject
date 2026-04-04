@@ -46,11 +46,11 @@ if ((isset($_GET['action']) && isset($_GET['id'])) || (isset($_POST['action']) &
         }
     } elseif ($action === 'whatsapp') {
         // Handle direct WhatsApp sharing for a single product.
-        $stmt = $conn->prepare("SELECT name FROM products WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($product = $result->fetch_assoc()) {
+        $stmt = $conn->prepare("SELECT name FROM products WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        $product = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($product) {
             $product_name = htmlspecialchars($product['name']);
             $whatsapp_phone = '+918600222111'; // Your WhatsApp number (from config or hardcoded)
             $message = "Hello, I would like to inquire about your product: *{$product_name}* from " . COMPANY_NAME . ".";
@@ -62,15 +62,22 @@ if ((isset($_GET['action']) && isset($_GET['id'])) || (isset($_POST['action']) &
             $products_inquired_text = $product_name;
             $status = 'New'; // Default status for new inquiries
 
-            $stmt_insert = $conn->prepare("INSERT INTO enquiries (submission_date, status, name, email, phone, company_name, products_inquired, inquiry_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt_insert = $conn->prepare("INSERT INTO enquiries (submission_date, status, name, email, phone, company_name, products_inquired, inquiry_type) VALUES (:submission_date, :status, :name, :email, :phone, :company_name, :products_inquired, :inquiry_type)");
             // For WhatsApp, we don't have name, email, phone, company_name directly, so use placeholders or empty strings
-            $empty_str = '';
-            $stmt_insert->bind_param("ssssssss", $submission_date, $status, $empty_str, $empty_str, $empty_str, $empty_str, $products_inquired_text, $inquiry_type);
-            
-            if (!$stmt_insert->execute()) {
-                error_log("Error saving WhatsApp inquiry to DB: " . $stmt_insert->error);
+            if (!$stmt_insert->execute([
+                ':submission_date' => $submission_date,
+                ':status' => $status,
+                ':name' => '',
+                ':email' => '',
+                ':phone' => '',
+                ':company_name' => '',
+                ':products_inquired' => $products_inquired_text,
+                ':inquiry_type' => $inquiry_type
+            ])) {
+                $errorInfo = $stmt_insert->errorInfo();
+                error_log("Error saving WhatsApp inquiry to DB: " . $errorInfo[2]);
             }
-            $stmt_insert->close();
+            $stmt_insert = null; // Close statement
 
             // Redirect to WhatsApp
             header("Location: " . $whatsapp_url);

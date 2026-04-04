@@ -28,10 +28,10 @@ if ($bill_id <= 0 || empty($title) || empty($items)) {
 }
 
 // --- Security Check: Only allow updating of the MOST RECENT bill ---
-$latest_bill_result = $conn->query("SELECT MAX(id) as max_id FROM bills");
-$latest_bill_id = $latest_bill_result->fetch_assoc()['max_id'] ?? 0;
+$latest_bill_result = $conn->query("SELECT MAX(id) as max_id FROM bills")->fetch(PDO::FETCH_ASSOC);
+$latest_bill_id = $latest_bill_result['max_id'] ?? 0;
 
-if ($bill_id != $latest_bill_id) {
+if ($bill_id !== (int)$latest_bill_id) {
     $_SESSION['flash_message'] = ['type' => 'error', 'text' => 'This bill can no longer be edited as a newer one exists.'];
     header("Location: manage_bills.php");
     exit;
@@ -51,52 +51,63 @@ foreach ($items as $item) {
 }
 
 // --- Database Transaction ---
-$conn->begin_transaction();
+$conn->beginTransaction();
 
 try {
     // 1. Update the main bill details
-    $stmt_bill = $conn->prepare("UPDATE bills SET title = ?, total_amount = ? WHERE id = ?");
-    $stmt_bill->bind_param("sdi", $title, $calculated_total, $bill_id);
-    if (!$stmt_bill->execute()) {
-        throw new Exception("Failed to update bill: " . $stmt_bill->error);
+    $stmt_bill = $conn->prepare("UPDATE bills SET title = :title, total_amount = :total_amount WHERE id = :id");
+    if (!$stmt_bill->execute([
+        ':title' => $title,
+        ':total_amount' => $calculated_total,
+        ':id' => $bill_id
+    ])) {
+        $errorInfo = $stmt_bill->errorInfo();
+        throw new Exception("Failed to update bill: " . $errorInfo[2]);
     }
-    $stmt_bill->close();
+    $stmt_bill = null; // Close statement
 
     // 2. Delete old items for this bill
-    $stmt_delete = $conn->prepare("DELETE FROM bill_items WHERE bill_id = ?");
-    $stmt_delete->bind_param("i", $bill_id);
-    $stmt_delete->execute();
-    $stmt_delete->close();
+    $stmt_delete = $conn->prepare("DELETE FROM bill_items WHERE bill_id = :bill_id");
+    $stmt_delete->execute([':bill_id' => $bill_id]);
+    $stmt_delete = null; // Close statement
 
     // 3. Insert the new set of items
-    $stmt_item = $conn->prepare("INSERT INTO bill_items (bill_id, sl_no, description, unit, qty, rate, amount) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt_item = $conn->prepare("INSERT INTO bill_items (bill_id, sl_no, description, unit, qty, rate, amount) VALUES (:bill_id, :sl_no, :description, :unit, :qty, :rate, :amount)");
 
     foreach ($items as $item) {
         $sl_no = trim($item['sl_no'] ?? '');
         $description = trim($item['description']);
         $unit = trim($item['unit'] ?? 'Nos.');
-        $qty = (float)$item['qty'];
-        $rate = (float)$item['rate'];
+        $qty = (float)($item['qty'] ?? 0);
+        $rate = (float)($item['rate'] ?? 0);
         $amount = $qty * $rate;
 
-        $stmt_item->bind_param("isssddd", $bill_id, $sl_no, $description, $unit, $qty, $rate, $amount);
-        if (!$stmt_item->execute()) {
-            throw new Exception("Failed to insert bill item: " . $stmt_item->error);
+        if (!$stmt_item->execute([
+            ':bill_id' => $bill_id,
+            ':sl_no' => $sl_no,
+            ':description' => $description,
+            ':unit' => $unit,
+            ':qty' => $qty,
+            ':rate' => $rate,
+            ':amount' => $amount
+        ])) {
+            $errorInfo = $stmt_item->errorInfo();
+            throw new Exception("Failed to insert bill item: " . $errorInfo[2]);
         }
     }
-    $stmt_item->close();
+    $stmt_item = null; // Close statement
 
     $conn->commit();
     $_SESSION['flash_message'] = ['type' => 'success', 'text' => 'Bill #' . $bill_id . ' updated successfully!'];
     header("Location: manage_bills.php");
     exit;
 } catch (Exception $e) {
-    $conn->rollback();
+    $conn->rollBack();
     error_log("Bill update failed: " . $e->getMessage());
     $_SESSION['flash_message'] = ['type' => 'error', 'text' => 'A database error occurred. Could not update the bill.'];
     header("Location: edit_bill.php?id=" . $bill_id);
     exit;
 } finally {
-    $conn->close();
+    $conn = null; // Close connection
 }
 ?>

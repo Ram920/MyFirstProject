@@ -16,8 +16,9 @@ if ($bill_id <= 0) {
 }
 
 // --- Security Check: Only allow editing of the MOST RECENT bill ---
-$latest_bill_result = $conn->query("SELECT MAX(id) as max_id FROM bills");
-$latest_bill_id = $latest_bill_result->fetch_assoc()['max_id'] ?? 0;
+$latest_bill_result = $conn->query("SELECT MAX(id) as max_id FROM bills")->fetch(PDO::FETCH_ASSOC);
+$latest_bill_id = $latest_bill_result['max_id'] ?? 0;
+$latest_bill_result = null; // Close statement
 
 if ($bill_id != $latest_bill_id) {
     $_SESSION['flash_message'] = ['type' => 'error', 'text' => 'Error: Only the most recent bill can be edited.'];
@@ -27,18 +28,17 @@ if ($bill_id != $latest_bill_id) {
 
 // --- Fetch existing bill data ---
 $stmt_bill = $conn->prepare("SELECT * FROM bills WHERE id = ?");
-$stmt_bill->bind_param("i", $bill_id);
-$stmt_bill->execute();
-$result_bill = $stmt_bill->get_result();
-if ($result_bill->num_rows === 0) {
+$stmt_bill->execute([$bill_id]);
+$bill = $stmt_bill->fetch(PDO::FETCH_ASSOC);
+$stmt_bill = null; // Close statement
+if (!$bill) {
     exit('Bill not found.');
 }
-$bill = $result_bill->fetch_assoc();
 
 $stmt_items = $conn->prepare("SELECT * FROM bill_items WHERE bill_id = ? ORDER BY id ASC");
-$stmt_items->bind_param("i", $bill_id);
-$stmt_items->execute();
-$bill_items = $stmt_items->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt_items->execute([$bill_id]);
+$bill_items = $stmt_items->fetchAll(PDO::FETCH_ASSOC);
+$stmt_items = null; // Close statement
 
 // --- CSRF Token Generation ---
 $_SESSION['csrf_token'] = bin2hex(random_bytes(32));

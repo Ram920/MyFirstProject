@@ -19,9 +19,9 @@ fputcsv($output, [
     'Customization Req', 'Additional Req', 'Drawing File', 'Inquiry Type'
 ]);
 
-$result = $conn->query("SELECT * FROM enquiries ORDER BY submission_date DESC");
+$stmt = $conn->query("SELECT * FROM enquiries ORDER BY submission_date DESC");
 
-while ($row = $result->fetch_assoc()) {
+while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     fputcsv($output, [
         $row['id'],
         $row['submission_date'],
@@ -41,6 +41,6 @@ while ($row = $result->fetch_assoc()) {
 }
 
 fclose($output);
-$conn->close();
+$conn = null;
 exit();
 ?>

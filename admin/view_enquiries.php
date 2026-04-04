@@ -15,8 +15,7 @@ $_SESSION['last_activity'] = time();
 
 require_once __DIR__ . '/../db_connect.php';
 require_once 'config.php'; // Include configuration
-
-$enquiries = $conn->query("SELECT * FROM enquiries ORDER BY submission_date DESC");
+$enquiries = $conn->query("SELECT * FROM enquiries ORDER BY submission_date DESC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -51,7 +50,7 @@ $enquiries = $conn->query("SELECT * FROM enquiries ORDER BY submission_date DESC
                 </tr>
             </thead>
             <tbody>
-                <?php while ($row = $enquiries->fetch_assoc()): ?>
+                <?php foreach ($enquiries as $row): ?>
                     <tr>
                         <td><?php echo $row['id']; ?></td>
                         <td><?php echo date('d M Y, H:i', strtotime($row['submission_date'])); ?></td>
@@ -95,7 +94,7 @@ $enquiries = $conn->query("SELECT * FROM enquiries ORDER BY submission_date DESC
                             </div>
                         </div>
                     </div>
-                <?php endwhile; ?>
+                <?php endforeach; ?>
             </tbody>
         </table>
     </div>
@@ -110,13 +109,14 @@ $(document).ready(function(){
         var newStatus = $(this).val();
         
         $.ajax({
-            url: 'update_enquiry_status.php',
+            url: 'update_enquiry_status.php', // Ensure this file is also updated to PDO
             type: 'POST',
             data: {
                 id: enquiryId,
                 status: newStatus
             },
             success: function(response){
+                console.log(response); // Log response for debugging
                 // You can add a success message here if you want
                 console.log('Status updated successfully');
             },
@@ -129,4 +129,4 @@ $(document).ready(function(){
 </script>
 </body>
 </html>
-<?php $conn->close(); ?>
+<?php $conn = null; ?>

@@ -38,37 +38,39 @@ if (isset($_POST['save_increments'])) {
     $new_values = $_POST[$component_to_update];
     $all_successful = true;
 
-    $conn->begin_transaction();
+    $conn->beginTransaction(); // Start transaction
 
     try {
-        $sql = "UPDATE employees SET `$component_to_update` = ? WHERE id = ?";
+        $sql = "UPDATE employees SET {$component_to_update} = :salary WHERE id = :id";
         $stmt = $conn->prepare($sql);
 
         foreach ($new_values as $employee_id => $new_salary) {
             $salary = (float)($new_salary ?? 0.00);
             $emp_id = (int)$employee_id;
-            $stmt->bind_param("di", $salary, $emp_id);
-            if (!$stmt->execute()) {
+            
+            if (!$stmt->execute([':salary' => $salary, ':id' => $emp_id])) {
                 $all_successful = false;
+                $errorInfo = $stmt->errorInfo();
+                error_log("Error updating employee ID {$emp_id}: " . $errorInfo[2]);
             }
         }
-        $stmt->close();
+        $stmt = null; // Close statement
 
         if ($all_successful) {
             $conn->commit();
             $message = '<div class="alert alert-success">Employee salaries updated successfully!</div>';
         } else {
-            $conn->rollback();
+            $conn->rollBack();
             $message = '<div class="alert alert-danger">An error occurred. Some salaries could not be updated.</div>';
         }
     } catch (Exception $e) {
-        $conn->rollback();
+        $conn->rollBack();
         $message = '<div class="alert alert-danger">A database error occurred: ' . $e->getMessage() . '</div>';
     }
 }
 
 // Fetch all employees
-$employees = $conn->query("SELECT id, employee_id, full_name, designation, `$selected_component` FROM employees ORDER BY full_name ASC");
+$employees = $conn->query("SELECT id, employee_id, full_name, designation, {$selected_component} FROM employees ORDER BY full_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 <!DOCTYPE html>
@@ -125,8 +127,8 @@ $employees = $conn->query("SELECT id, employee_id, full_name, designation, `$sel
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($row = $employees->fetch_assoc()): ?>
-                                <tr>
+                            <?php foreach ($employees as $row): ?>
+                                <tr> 
                                     <td><?php echo htmlspecialchars($row['employee_id']); ?></td>
                                     <td><?php echo htmlspecialchars($row['full_name']); ?></td>
                                     <td><?php echo number_format($row[$selected_component], 2); ?></td>
@@ -134,7 +136,7 @@ $employees = $conn->query("SELECT id, employee_id, full_name, designation, `$sel
                                         <input type="number" step="0.01" name="<?php echo $selected_component; ?>[<?php echo $row['id']; ?>]" class="form-control" value="<?php echo htmlspecialchars($row[$selected_component]); ?>">
                                     </td>
                                 </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
@@ -145,4 +147,4 @@ $employees = $conn->query("SELECT id, employee_id, full_name, designation, `$sel
 </div>
 </body>
 </html>
-<?php $conn->close(); ?>
+<?php $conn = null; ?>

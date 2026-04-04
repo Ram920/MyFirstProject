@@ -54,7 +54,7 @@ require_once 'db_connect.php';   // Connect to the database
                 <ul>
                     <li><a href="index.php">Home</a></li>
                     <li><a href="index.php#about">About</a></li>
-                    <li><a href="index.php#portfolio">Portfolio</a></li>
+                    <li><a href="index.php#projects">Projects</a></li>
                     <li><a href="index.php#contact">Contact</a></li>
                     <li class="active"><a href="cart.php" id="quote-basket-link-cart">Quote Basket (<?php echo count($_SESSION['cart'] ?? []); ?>)</a></li>
                 </ul>
@@ -102,7 +102,7 @@ require_once 'db_connect.php';   // Connect to the database
                 $cart_items = $_SESSION['cart'] ?? [];
                 
                 if (empty($cart_items)) {
-                    echo "<p>Your quote basket is empty. Please add products from our portfolio.</p>";
+                    echo "<p>Your quote basket is empty. Please add products from our projects.</p>";
                     // The success message will be displayed here by JS after submission
                 } else {
                 echo '<div id="cart-contents">'; // Wrapper for AJAX update
@@ -117,12 +117,12 @@ require_once 'db_connect.php';   // Connect to the database
                         
                         // Securely fetch product names for WhatsApp message
                         $placeholders = implode(',', array_fill(0, count($cart_items), '?'));
-                        $stmt = $conn->prepare("SELECT name FROM products WHERE id IN ($placeholders)");
-                        $stmt->bind_param(str_repeat('i', count($cart_items)), ...$cart_items);
-                        $stmt->execute();
-                        $whatsapp_result = $stmt->get_result();
+                        $stmt = $conn->prepare("SELECT name FROM products WHERE id IN (" . implode(',', array_fill(0, count($cart_items), '?')) . ")");
+                        $stmt->execute($cart_items);
+                        $whatsapp_products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
                         $product_count = 1;
-                        while ($wp_product = $whatsapp_result->fetch_assoc()) {
+                        foreach ($whatsapp_products as $wp_product) {
                             $whatsapp_product_list .= $product_count . ". " . htmlspecialchars($wp_product['name']) . "\n";
                             $product_count++;
                         }
@@ -145,11 +145,11 @@ require_once 'db_connect.php';   // Connect to the database
                             <?php
                             // Use a prepared statement to fetch product details securely
                             $placeholders = implode(',', array_fill(0, count($cart_items), '?'));
-                            $stmt = $conn->prepare("SELECT * FROM products WHERE id IN ($placeholders)");
-                            $stmt->bind_param(str_repeat('i', count($cart_items)), ...$cart_items);
-                            $stmt->execute();
-                            $result = $stmt->get_result();
-                            while ($product = $result->fetch_assoc()) {
+                            $stmt = $conn->prepare("SELECT * FROM products WHERE id IN (" . implode(',', array_fill(0, count($cart_items), '?')) . ")");
+                            $stmt->execute($cart_items);
+                            $products_in_cart = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                            foreach ($products_in_cart as $product) {
                             ?>
                             <tr>
                                 <td><img src="assets/img/portfolio/<?php echo htmlspecialchars($product['image']); ?>" width="100" alt="<?php echo htmlspecialchars($product['name']); ?>"></td>

@@ -11,20 +11,21 @@
 
   // --- Basic Site Visit Tracker ---
   $today = date("Y-m-d");
-  $stmt = $conn->prepare("INSERT INTO site_visits (visit_date, visit_count) VALUES (?, 1) ON DUPLICATE KEY UPDATE visit_count = visit_count + 1");
-  $stmt->bind_param("s", $today);
-  $stmt->execute();
+  $stmt = $conn->prepare("INSERT INTO site_visits (visit_date, visit_count) VALUES (:today, 1) ON CONFLICT (visit_date) DO UPDATE SET visit_count = site_visits.visit_count + 1");
+  $stmt->execute([':today' => $today]);
 
   // --- Fetch dynamic website settings ---
   $youtube_url_result = $conn->query("SELECT setting_value FROM site_settings WHERE setting_key = 'youtube_video_url'");
-  $youtube_url = $youtube_url_result->fetch_assoc()['setting_value'] ?? 'https://www.youtube.com/watch?v=jDDaplaOz7Q'; // Fallback URL
-
-  $clients_result = $conn->query("SELECT * FROM clients ORDER BY id DESC");
-
-  $team_members_result = $conn->query("SELECT * FROM team_members ORDER BY display_order ASC, id ASC");
+  $youtube_row = $youtube_url_result->fetch(PDO::FETCH_ASSOC);
+  $youtube_url = $youtube_row['setting_value'] ?? 'https://www.youtube.com/watch?v=jDDaplaOz7Q';
 
   $catalog_pdf_result = $conn->query("SELECT setting_value FROM site_settings WHERE setting_key = 'catalog_pdf_url'");
-  $catalog_pdf_url = $catalog_pdf_result->fetch_assoc()['setting_value'] ?? '';
+  $catalog_pdf_row = $catalog_pdf_result->fetch(PDO::FETCH_ASSOC);
+  $catalog_pdf_url = ($catalog_pdf_row && isset($catalog_pdf_row['setting_value'])) ? $catalog_pdf_row['setting_value'] : '';
+
+  // Fetch clients and team members from the database to populate the sections below
+  $clients = $conn->query("SELECT * FROM clients ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
+  $team_members = $conn->query("SELECT * FROM team_members ORDER BY display_order ASC, id ASC")->fetchAll(PDO::FETCH_ASSOC);
 
   // Do NOT close the connection here. It will be closed later in the script.
 ?>
@@ -71,13 +72,6 @@
     </style>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.1/css/all.min.css">
-
-  <!-- =======================================================
-  * Template Name: Dewi - v2.2.1
-  * Template URL: https://bootstrapmade.com/dewi-free-multi-purpose-html-template/
-  * Author: BootstrapMade.com
-  * License: https://bootstrapmade.com/license/
-  ======================================================== -->
 </head>
 
 <body>
@@ -97,7 +91,7 @@
           <li class="active"><a href="index.php">Home</a></li>
           <li><a href="#about">About</a></li>
           <li><a href="#services">Services</a></li>
-          <li><a href="#portfolio">Portfolio</a></li>
+          <li><a href="#projects">Projects</a></li>
           <li><a href="#team">Team</a></li>
           <li><a href="#contact">Contact</a></li>
           <li><a href="cart.php" id="quote-basket-link">Quote Basket (<span id="cart-count"><?php echo count($_SESSION['cart'] ?? []); ?></span>)</a></li>
@@ -232,11 +226,11 @@
 
         <div class="row">
 
-          <?php while ($client = $clients_result->fetch_assoc()): ?>
+          <?php foreach ($clients as $client): ?>
           <div class="col-lg-2 col-md-4 col-6 d-flex align-items-center justify-content-center">
             <img src="assets/img/clients/<?php echo htmlspecialchars($client['image']); ?>" class="img-fluid" alt="<?php echo htmlspecialchars($client['name']); ?>">
           </div>
-          <?php endwhile; ?>
+          <?php endforeach; ?>
         </div>
 
       </div>
@@ -388,13 +382,13 @@
       </div>
     </section><!-- End Testimonials Section -->
 
-    <!-- ======= Portfolio Section ======= -->
-    <section id="portfolio" class="portfolio">
+    <!-- ======= Projects Section ======= -->
+    <section id="projects" class="portfolio">
       <div class="container" data-aos="fade-up">
 
         <div class="section-title">
-          <h2>Portfolio</h2>
-          <p>Check our Portfolio</p>
+          <h2>Projects</h2>
+          <p>Check our Projects</p>
         </div>
 
         <div class="row" data-aos="fade-up" data-aos-delay="100">
@@ -405,7 +399,7 @@
 
                 // First, check if there are any products at all.
                 $product_count_result = $conn->query("SELECT COUNT(*) AS total FROM products");
-                $product_count = $product_count_result->fetch_assoc()['total'];
+                $product_count = $product_count_result->fetch(PDO::FETCH_ASSOC)['total'] ?? 0;
 
                 // Only show filters if there is at least one product.
                 if ($product_count > 0) {
@@ -413,7 +407,7 @@
 
                     // Fetch all categories from the database and create a filter for each one.
                     $categories_result = $conn->query("SELECT * FROM categories ORDER BY name ASC");
-                    while ($category = $categories_result->fetch_assoc()) {
+                    foreach ($categories_result->fetchAll(PDO::FETCH_ASSOC) as $category) {
                         echo '<li data-filter=".' . htmlspecialchars($category['filter_class']) . '">' . htmlspecialchars($category['name']) . '</li>';
                     }
                 }
@@ -424,8 +418,8 @@
 
         <div class="row portfolio-container" data-aos="fade-up" data-aos-delay="200">
             <?php
-              $result = $conn->query("SELECT * FROM products ORDER BY id DESC");
-              while($product = $result->fetch_assoc()):
+              $products = $conn->query("SELECT * FROM products ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
+              foreach($products as $product):
             ?>
             <div class="col-lg-4 col-md-6 portfolio-item <?php echo htmlspecialchars($product['category']); ?>">
               <div class="portfolio-wrap">
@@ -442,13 +436,13 @@
               </div>
             </div>
             <?php
-              endwhile;
+              endforeach;
             ?>
 
         </div>
 
       </div>
-    </section><!-- End Portfolio Section -->
+    </section><!-- End Projects Section -->
 
     <!-- ======= Team Section ======= -->
     <section id="team" class="team section-bg">
@@ -460,7 +454,7 @@
         </div>
           
         <div class="row">
-          <?php while ($member = $team_members_result->fetch_assoc()): ?>
+          <?php foreach ($team_members as $member): ?>
           <div class="col-lg-4 col-md-6 d-flex align-items-stretch">
             <div class="member" data-aos="fade-up" data-aos-delay="100">
               <div class="pic"><img src="assets/img/team/<?php echo htmlspecialchars($member['image']); ?>" class="img-fluid" alt="<?php echo htmlspecialchars($member['name']); ?>"></div>
@@ -476,7 +470,7 @@
               </div>
             </div>
           </div>
-          <?php endwhile; ?>
+          <?php endforeach; ?>
 
         </div>
 
@@ -762,8 +756,8 @@
     <!-- Toast Notification -->
     <div id="toast-notification" class="toast-notification">Product added to basket!</div>
     <?php
-      // Close the database connection at the very end of the script.
-      $conn->close();
+    // Close the connection
+    $conn = null;
     ?>
 </body>
 

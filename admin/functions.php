@@ -59,3 +59,48 @@ function resizeAndCropImage($source_path, $destination_path, $target_width = 800
 
     return true;
 }
+
+/**
+ * Uploads a file to Supabase Storage.
+ *
+ * @param string $file_tmp_path Temporary path of the uploaded file.
+ * @param string $file_name Desired name of the file in Supabase Storage (including path within bucket).
+ * @param string $bucket_name The Supabase Storage bucket name (default: 'catalogs').
+ * @return string|false The public URL of the uploaded file on success, false on failure.
+ */
+function uploadToSupabase($file_tmp_path, $file_name, $bucket_name = 'catalogs') {
+    if (!defined('SUPABASE_URL') || !defined('SUPABASE_ANON_KEY')) {
+        error_log("Supabase URL or Anon Key not defined in config.php");
+        return false;
+    }
+
+    $supabase_url = SUPABASE_URL;
+    $supabase_anon_key = SUPABASE_ANON_KEY;
+
+    $url = $supabase_url . '/storage/v1/object/' . $bucket_name . '/' . $file_name;
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, file_get_contents($file_tmp_path));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: Bearer ' . $supabase_anon_key,
+        'apikey: ' . $supabase_anon_key,
+        'Content-Type: ' . (function_exists('mime_content_type') ? mime_content_type($file_tmp_path) : 'application/octet-stream'), // Use actual MIME type or fallback
+        'x-upsert: true' // Overwrite if file exists
+    ]);
+
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($http_code >= 200 && $http_code < 300) {
+        // Supabase returns a JSON object with { "Key": "..." } or similar on success
+        // The public URL is usually constructed as: SUPABASE_URL/storage/v1/object/public/BUCKET_NAME/FILE_PATH
+        return $supabase_url . '/storage/v1/object/public/' . $bucket_name . '/' . $file_name;
+    } else {
+        error_log("Supabase upload failed with HTTP code {$http_code}: {$response}");
+        return false;
+    }
+}

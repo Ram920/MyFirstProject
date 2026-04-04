@@ -21,12 +21,12 @@ $message = '';
 // --- Handle YouTube URL Update ---
 if (isset($_POST['update_youtube_url'])) {
     $youtube_url = trim($_POST['youtube_url']);
-    $stmt = $conn->prepare("UPDATE site_settings SET setting_value = ? WHERE setting_key = 'youtube_video_url'");
-    $stmt->bind_param("s", $youtube_url);
-    if ($stmt->execute()) {
+    $stmt = $conn->prepare("UPDATE site_settings SET setting_value = :value WHERE setting_key = 'youtube_video_url'");
+    if ($stmt->execute([':value' => $youtube_url])) {
         $message = '<div class="alert alert-success">YouTube URL updated successfully!</div>';
     } else {
-        $message = '<div class="alert alert-danger">Error updating YouTube URL.</div>';
+        $errorInfo = $stmt->errorInfo();
+        $message = '<div class="alert alert-danger">Error updating YouTube URL: ' . $errorInfo[2] . '</div>';
     }
 }
 
@@ -46,11 +46,12 @@ if (isset($_POST['add_client'])) {
         if ($img_info) {
             if (move_uploaded_file($_FILES["image"]["tmp_name"], $target_file)) {
                 $stmt = $conn->prepare("INSERT INTO clients (name, image) VALUES (?, ?)");
-                $stmt->bind_param("ss", $client_name, $image_name);
-                if ($stmt->execute()) {
+                if ($stmt->execute([$client_name, $image_name])) {
                     $message = '<div class="alert alert-success">Client logo added successfully!</div>';
                 } else {
-                    $message = '<div class="alert alert-danger">Database error: ' . $conn->error . '</div>';
+                    // Check for duplicate entry (PostgreSQL unique violation error code is 23505)
+                    $errorInfo = $stmt->errorInfo(); // Assuming 'name' or 'image' might be unique
+                    $message = '<div class="alert alert-danger">Database error: ' . $errorInfo[2] . '</div>';
                 }
             } else {
                  $message = '<div class="alert alert-danger">Sorry, there was an error uploading your file.</div>';
@@ -66,29 +67,31 @@ if (isset($_POST['add_client'])) {
 // --- Handle Delete Client Logo ---
 if (isset($_GET['delete_client'])) {
     $id = (int)$_GET['delete_client'];
-    $stmt = $conn->prepare("SELECT image FROM clients WHERE id = ?");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($result->num_rows > 0) {
-        $row = $result->fetch_assoc();
-        $image_path = '../assets/img/clients/' . $row['image'];
-        if (file_exists($image_path)) {
-            unlink($image_path);
+    $conn->beginTransaction();
+    try {
+        $stmt = $conn->prepare("SELECT image FROM clients WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $image_path = '../assets/img/clients/' . $row['image'];
+            if (file_exists($image_path)) {
+                unlink($image_path);
+            }
         }
+        $stmt_delete = $conn->prepare("DELETE FROM clients WHERE id = :id");
+        $stmt_delete->execute([':id' => $id]);
+        $conn->commit();
+    } catch (Exception $e) {
+        $conn->rollBack();
+        $message = '<div class="alert alert-danger">Error deleting client: ' . $e->getMessage() . '</div>';
     }
-    $stmt_delete = $conn->prepare("DELETE FROM clients WHERE id = ?");
-    $stmt_delete->bind_param("i", $id);
-    $stmt_delete->execute();
     header("Location: manage_website.php");
     exit;
 }
 
 // --- Fetch current data ---
-$youtube_url_result = $conn->query("SELECT setting_value FROM site_settings WHERE setting_key = 'youtube_video_url'");
-$youtube_url = $youtube_url_result->fetch_assoc()['setting_value'] ?? '';
-
-$clients = $conn->query("SELECT * FROM clients ORDER BY id DESC");
+$youtube_url = $conn->query("SELECT setting_value FROM site_settings WHERE setting_key = 'youtube_video_url'")->fetch(PDO::FETCH_ASSOC)['setting_value'] ?? '';
+$clients = $conn->query("SELECT * FROM clients ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -140,14 +143,14 @@ $clients = $conn->query("SELECT * FROM clients ORDER BY id DESC");
             <h5>Existing Client Logos</h5>
             <table class="table table-striped">
                 <thead>
-                    <tr>
+                    <tr> 
                         <th>Logo</th>
                         <th>Name</th>
                         <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php while ($row = $clients->fetch_assoc()): ?>
+                    <?php foreach ($clients as $row): ?>
                         <tr>
                             <td class="align-middle"><img src="../assets/img/clients/<?php echo htmlspecialchars($row['image']); ?>" class="img-fluid" style="max-width: 100px; max-height: 50px; object-fit: contain;" alt="<?php echo htmlspecialchars($row['name']); ?>"></td>
                             <td><?php echo htmlspecialchars($row['name']); ?></td>
@@ -155,7 +158,7 @@ $clients = $conn->query("SELECT * FROM clients ORDER BY id DESC");
                                 <a href="manage_website.php?delete_client=<?php echo $row['id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this logo?')">Delete</a>
                             </td>
                         </tr>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
@@ -163,4 +166,4 @@ $clients = $conn->query("SELECT * FROM clients ORDER BY id DESC");
 </div>
 </body>
 </html>
-<?php $conn->close(); ?>
+<?php $conn = null; ?>

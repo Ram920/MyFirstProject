@@ -64,28 +64,26 @@ if (!empty($error_messages)) {
 }
 
 // --- Database Transaction ---
-$conn->begin_transaction();
+$conn->beginTransaction(); // Start transaction
 
 try {
     // 1. Save the main bill details
     $bill_date = date("Y-m-d"); // Use current date for the bill
-    $stmt_bill = $conn->prepare("INSERT INTO bills (title, bill_date, total_amount) VALUES (?, ?, ?)");
-    if (!$stmt_bill) { // @phpstan-ignore-line
-        throw new Exception("Prepare failed (bill): " . $conn->error);
-    }
-    $stmt_bill->bind_param("ssd", $title, $bill_date, $calculated_total);
-    if (!$stmt_bill->execute()) {
-        throw new Exception("Execute failed (bill): " . $stmt_bill->error);
+    $stmt_bill = $conn->prepare("INSERT INTO bills (title, bill_date, total_amount) VALUES (:title, :bill_date, :total_amount)");
+    if (!$stmt_bill->execute([
+        ':title' => $title,
+        ':bill_date' => $bill_date,
+        ':total_amount' => $calculated_total
+    ])) {
+        $errorInfo = $stmt_bill->errorInfo();
+        throw new Exception("Execute failed (bill): " . $errorInfo[2]);
     }
 
-    $bill_id = $conn->insert_id; // Get the ID of the newly created bill
-    $stmt_bill->close();
+    $bill_id = $conn->lastInsertId(); // Get the ID of the newly created bill
+    $stmt_bill = null; // Close statement
 
     // 2. Prepare statement for bill items
-    $stmt_item = $conn->prepare("INSERT INTO bill_items (bill_id, sl_no, description, unit, qty, rate, amount) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    if (!$stmt_item) { // @phpstan-ignore-line
-        throw new Exception("Prepare failed (item): " . $conn->error);
-    }
+    $stmt_item = $conn->prepare("INSERT INTO bill_items (bill_id, sl_no, description, unit, qty, rate, amount) VALUES (:bill_id, :sl_no, :description, :unit, :qty, :rate, :amount)");
 
     // 3. Loop through and save each bill item
     foreach ($items as $item) {
@@ -97,12 +95,20 @@ try {
         $rate = filter_var($item['rate'] ?? 0, FILTER_VALIDATE_FLOAT);
         $amount = filter_var($item['amount'] ?? 0, FILTER_VALIDATE_FLOAT);
 
-        $stmt_item->bind_param("isssddd", $bill_id, $sl_no, $description, $unit, $qty, $rate, $amount);
-        if (!$stmt_item->execute()) {
-            throw new Exception("Execute failed (item): " . $stmt_item->error);
+        if (!$stmt_item->execute([
+            ':bill_id' => $bill_id,
+            ':sl_no' => $sl_no,
+            ':description' => $description,
+            ':unit' => $unit,
+            ':qty' => $qty,
+            ':rate' => $rate,
+            ':amount' => $amount
+        ])) {
+            $errorInfo = $stmt_item->errorInfo();
+            throw new Exception("Execute failed (item): " . $errorInfo[2]);
         }
     }
-    $stmt_item->close();
+    $stmt_item = null; // Close statement
 
     // If everything was successful, commit the transaction
     $conn->commit();
@@ -119,6 +125,6 @@ try {
     header("Location: create_bill.php");
     exit;
 } finally {
-    $conn->close();
+    $conn = null; // Close connection
 }
 ?>

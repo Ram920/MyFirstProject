@@ -120,12 +120,14 @@ $alert = '';
             $products_html_list = "<h4>Products in Quote Basket:</h4><ul>";            
             // Use a prepared statement to fetch product names securely
             $cart_items = $_SESSION['cart'];
-            $placeholders = implode(',', array_fill(0, count($cart_items), '?'));
+            $placeholders = implode(',', array_map(function($i) { return ":id".$i; }, array_keys($cart_items)));
             $stmt = $conn->prepare("SELECT name FROM products WHERE id IN ($placeholders)");
-            $stmt->bind_param(str_repeat('i', count($cart_items)), ...$cart_items);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            while ($product = $result->fetch_assoc()) {
+            $params = [];
+            foreach ($cart_items as $key => $id) {
+                $params[":id".$key] = $id;
+            }
+            $stmt->execute($params);
+            while ($product = $stmt->fetch(PDO::FETCH_ASSOC)) {
                 $products_html_list .= "<li>" . htmlspecialchars($product['name']) . "</li>";
                 $products_inquired_text .= htmlspecialchars($product['name']) . ", ";
             }
@@ -183,10 +185,21 @@ $alert = '';
         $mail->send();
 
         // --- Save enquiry to the database ---
-        $stmt = $conn->prepare("INSERT INTO enquiries (name, email, phone, company_name, delivery_location, quantity, customization_req, additional_req, products_inquired, drawing_file, inquiry_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("sssssssssss", $name, $email, $phone, $company_name, $delivery_location, $quantity, $required_customization, $additional_requirements, $products_inquired_text, $drawing_file_name, $inquiry_type);
-        $stmt->execute();
-        $stmt->close();
+        $stmt = $conn->prepare("INSERT INTO enquiries (name, email, phone, company_name, delivery_location, quantity, customization_req, additional_req, products_inquired, drawing_file, inquiry_type) VALUES (:name, :email, :phone, :company_name, :delivery_location, :quantity, :customization_req, :additional_req, :products_inquired, :drawing_file, :inquiry_type)");
+        $stmt->execute([
+            ':name' => $name, // Use named parameters for consistency
+            ':email' => $email,
+            ':phone' => $phone,
+            ':company_name' => $company_name,
+            ':delivery_location' => $delivery_location,
+            ':quantity' => $quantity,
+            ':customization_req' => $required_customization,
+            ':additional_req' => $additional_requirements,
+            ':products_inquired' => $products_inquired_text,
+            ':drawing_file' => $drawing_file_name,
+            ':inquiry_type' => $inquiry_type
+        ]);
+        $stmt = null;
 
         // Clear the cart after successful submission
         if (isset($_SESSION['cart'])) {
@@ -204,4 +217,5 @@ $alert = '';
         exit;
       }
   }
+$conn = null; // Close connection
 ?>

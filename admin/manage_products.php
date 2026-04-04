@@ -26,13 +26,29 @@ if (isset($_POST['add_product'])) {
         $target_file = $target_dir . $image_name;
 
         if (resizeAndCropImage($_FILES["image"]["tmp_name"], $target_file)) {
+            $catalog_url = '';
+            // --- Handle Catalog PDF Upload to Supabase ---
+            if (isset($_FILES['catalog_pdf']) && $_FILES['catalog_pdf']['error'] == UPLOAD_ERR_OK) {
+                $pdf_name = 'product_catalogs/' . time() . '_' . basename($_FILES['catalog_pdf']['name']); // Store in a subfolder
+                $uploaded_url = uploadToSupabase($_FILES['catalog_pdf']['tmp_name'], $pdf_name);
+                if ($uploaded_url) {
+                    $catalog_url = $uploaded_url;
+                }
+            }
+
             // Use prepared statement to prevent SQL injection
-            $stmt = $conn->prepare("INSERT INTO products (name, category, image, description) VALUES (?, ?, ?, ?)");
-            $stmt->bind_param("ssss", $_POST['name'], $_POST['category'], $image_name, $_POST['description']);
-            if ($stmt->execute()) {
+            $stmt = $conn->prepare("INSERT INTO products (name, category, image, description, catalog_url) VALUES (:name, :category, :image, :description, :catalog_url)");
+            if ($stmt->execute([
+                ':name' => $_POST['name'],
+                ':category' => $_POST['category'],
+                ':image' => $image_name,
+                ':description' => $_POST['description'],
+                ':catalog_url' => $catalog_url
+            ])) {
                 $message = '<div class="alert alert-success">Product added successfully!</div>';
             } else {
-                $message = '<div class="alert alert-danger">Error: ' . $conn->error . '</div>';
+                $errorInfo = $stmt->errorInfo();
+                $message = '<div class="alert alert-danger">Error: ' . $errorInfo[2] . '</div>';
             }
         } else {
             $message = '<div class="alert alert-danger">Sorry, there was an error processing your image. Please upload a valid JPG, PNG, or GIF.</div>';
@@ -45,28 +61,33 @@ if (isset($_POST['add_product'])) {
 // --- Handle Delete Product ---
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
-    // Use prepared statement to securely fetch the image name
-    $stmt = $conn->prepare("SELECT image FROM products WHERE id = ?");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($result->num_rows > 0) {
-        $row = $result->fetch_assoc();
+    
+    $conn->beginTransaction(); // Start transaction
+    try {
+        // Use prepared statement to securely fetch the image name
+        $stmt = $conn->prepare("SELECT image FROM products WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        
         $image_path = '../assets/img/portfolio/' . $row['image'];
         if (file_exists($image_path)) {
             unlink($image_path);
         }
+        
+        // Use prepared statement to securely delete the product
+        $stmt_delete = $conn->prepare("DELETE FROM products WHERE id = :id");
+        $stmt_delete->execute([':id' => $id]);
+        $conn->commit();
+    } catch (Exception $e) {
+        $conn->rollBack();
+        $message = '<div class="alert alert-danger">Error deleting product: ' . $e->getMessage() . '</div>';
     }
-    // Use prepared statement to securely delete the product
-    $stmt = $conn->prepare("DELETE FROM products WHERE id = ?");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
     header("Location: manage_products.php");
     exit;
 }
 
-$products = $conn->query("SELECT * FROM products ORDER BY id DESC");
-$categories = $conn->query("SELECT * FROM categories ORDER BY name ASC");
+$products = $conn->query("SELECT * FROM products ORDER BY id DESC")->fetchAll(PDO::FETCH_ASSOC);
+$categories = $conn->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -94,13 +115,14 @@ $categories = $conn->query("SELECT * FROM categories ORDER BY name ASC");
                     <label for="category">Category:</label>
                     <select name="category" id="category" class="form-control" required>
                         <option value="">-- Select a Category --</option>
-                        <?php while ($cat = $categories->fetch_assoc()): ?>
+                        <?php foreach ($categories as $cat): ?>
                             <option value="<?php echo htmlspecialchars($cat['filter_class']); ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="form-group"><textarea name="description" class="form-control" placeholder="Description (optional)"></textarea></div>
                 <div class="form-group"><label>Product Image (will be resized to 800x600):</label><input type="file" name="image" class="form-control-file" required></div>
+                <div class="form-group"><label>Catalog PDF (Optional, uploads to Supabase):</label><input type="file" name="catalog_pdf" class="form-control-file" accept=".pdf"></div>
                 <button type="submit" name="add_product" class="btn btn-primary">Add Product</button>
             </form>
         </div>
@@ -111,19 +133,26 @@ $categories = $conn->query("SELECT * FROM categories ORDER BY name ASC");
         <div class="card-header">Existing Products</div>
         <div class="card-body">
             <table class="table">
-                <thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Action</th></tr></thead>
+                <thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Catalog</th><th>Action</th></tr></thead>
                 <tbody>
-                    <?php while ($row = $products->fetch_assoc()): ?>
+                    <?php foreach ($products as $row): ?>
                         <tr>
                             <td><img src="../assets/img/portfolio/<?php echo htmlspecialchars($row['image']); ?>" width="100" alt=""></td>
                             <td><?php echo htmlspecialchars($row['name']); ?></td>
                             <td><?php echo htmlspecialchars($row['category']); ?></td>
                             <td>
+                                <?php if (!empty($row['catalog_url'])): ?>
+                                    <a href="<?php echo htmlspecialchars($row['catalog_url']); ?>" target="_blank" class="badge badge-info">View PDF</a>
+                                <?php else: ?>
+                                    <span class="text-muted">None</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
                                 <a href="edit_product.php?id=<?php echo $row['id']; ?>" class="btn btn-primary btn-sm">Edit</a>
                                 <a href="manage_products.php?delete=<?php echo $row['id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?')">Delete</a>
                             </td>
                         </tr>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
@@ -131,4 +160,4 @@ $categories = $conn->query("SELECT * FROM categories ORDER BY name ASC");
 </div>
 </body>
 </html>
-<?php $conn->close(); ?>
+<?php $conn = null; ?>

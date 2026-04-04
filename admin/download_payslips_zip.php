@@ -4,6 +4,11 @@ session_start();
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
+// NOTE: This file currently uses dompdf for PDF generation.
+// To fully move to Supabase Edge Functions for PDF generation,
+// the Edge Function would need to return the PDF as a base64 string or a URL to a stored PDF,
+// which this PHP script would then fetch and add to the ZIP.
+
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     http_response_code(403);
     exit('Access Denied');
@@ -24,12 +29,11 @@ if ($month <= 0 || $year <= 0) {
 $period_string = date('F-Y', mktime(0, 0, 0, $month, 1, $year));
 
 // 1. Fetch all salary slips for the given month and year
-$stmt = $conn->prepare("SELECT * FROM salary_slips WHERE slip_month = ? AND slip_year = ?");
-$stmt->bind_param("ii", $month, $year);
-$stmt->execute();
-$result = $stmt->get_result();
+$stmt = $conn->prepare("SELECT * FROM salary_slips WHERE slip_month = :month AND slip_year = :year");
+$stmt->execute([':month' => $month, ':year' => $year]);
+$slips = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-if ($result->num_rows === 0) {
+if (empty($slips)) {
     exit('No payslips found for the selected period.');
 }
 
@@ -50,7 +54,7 @@ if ($zip->open($zip_filename, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TR
 }
 
 // 3. Loop through each slip, generate a PDF, and add it to the ZIP
-while ($slip = $result->fetch_assoc()) {
+foreach ($slips as $slip) {
     // --- Prepare Logo Data as Base64 ---
     $logoBase64 = '';
     $logoPath = __DIR__ . '/../images/Logo.png';
@@ -109,8 +113,8 @@ while ($slip = $result->fetch_assoc()) {
     $zip->addFromString($pdf_filename, $pdf_content);
 }
 
-$stmt->close();
-$conn->close();
+$stmt = null; // Close statement explicitly
+$conn = null; // Close connection
 
 // 4. Close the ZIP archive
 $zip->close();

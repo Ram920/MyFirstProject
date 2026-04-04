@@ -27,12 +27,14 @@ if (isset($_POST['add_member'])) {
         $target_file = $target_dir . $image_name;
 
         if (resizeAndCropImage($_FILES["image"]["tmp_name"], $target_file, 500, 500)) {
-            $stmt = $conn->prepare("INSERT INTO team_members (name, position, image) VALUES (?, ?, ?)");
-            $stmt->bind_param("sss", $name, $position, $image_name);
-            if ($stmt->execute()) {
+            $stmt = $conn->prepare("INSERT INTO team_members (name, position, image) VALUES (:name, :position, :image)");
+            if ($stmt->execute([
+                ':name' => $name, ':position' => $position, ':image' => $image_name
+            ])) {
                 $message = '<div class="alert alert-success">Team member added successfully!</div>';
             } else {
-                $message = '<div class="alert alert-danger">Database error: ' . $conn->error . '</div>';
+                $errorInfo = $stmt->errorInfo();
+                $message = '<div class="alert alert-danger">Database error: ' . $errorInfo[2] . '</div>';
             }
         } else {
             $message = '<div class="alert alert-danger">Sorry, there was an error processing the image. Please upload a valid JPG, PNG, or GIF.</div>';
@@ -45,24 +47,29 @@ if (isset($_POST['add_member'])) {
 // --- Handle Delete Team Member ---
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
-    $stmt_select = $conn->prepare("SELECT image FROM team_members WHERE id = ?");
-    $stmt_select->bind_param("i", $id);
-    $stmt_select->execute();
-    $result = $stmt_select->get_result();
-    if ($row = $result->fetch_assoc()) {
-        $image_path = '../assets/img/team/' . $row['image'];
-        if (file_exists($image_path)) {
-            unlink($image_path);
+    $conn->beginTransaction();
+    try {
+        $stmt_select = $conn->prepare("SELECT image FROM team_members WHERE id = :id");
+        $stmt_select->execute([':id' => $id]);
+        $row = $stmt_select->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $image_path = '../assets/img/team/' . $row['image'];
+            if (file_exists($image_path)) {
+                unlink($image_path);
+            }
         }
+        $stmt_delete = $conn->prepare("DELETE FROM team_members WHERE id = :id");
+        $stmt_delete->execute([':id' => $id]);
+        $conn->commit();
+    } catch (Exception $e) {
+        $conn->rollBack();
+        $message = '<div class="alert alert-danger">Error deleting team member: ' . $e->getMessage() . '</div>';
     }
-    $stmt_delete = $conn->prepare("DELETE FROM team_members WHERE id = ?");
-    $stmt_delete->bind_param("i", $id);
-    $stmt_delete->execute();
     header("Location: manage_team.php");
     exit;
 }
 
-$team_members = $conn->query("SELECT * FROM team_members ORDER BY display_order ASC, id DESC");
+$team_members = $conn->query("SELECT * FROM team_members ORDER BY display_order ASC, id DESC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -118,7 +125,7 @@ $team_members = $conn->query("SELECT * FROM team_members ORDER BY display_order 
                     </tr>
                 </thead>
                 <tbody>
-                    <?php while ($row = $team_members->fetch_assoc()): ?>
+                    <?php foreach ($team_members as $row): ?>
                         <tr>
                             <td><img src="../assets/img/team/<?php echo htmlspecialchars($row['image']); ?>" width="80" alt="<?php echo htmlspecialchars($row['name']); ?>"></td>
                             <td><?php echo htmlspecialchars($row['name']); ?></td>
@@ -128,7 +135,7 @@ $team_members = $conn->query("SELECT * FROM team_members ORDER BY display_order 
                                 <a href="manage_team.php?delete=<?php echo $row['id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this member?')">Delete</a>
                             </td>
                         </tr>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
@@ -136,4 +143,4 @@ $team_members = $conn->query("SELECT * FROM team_members ORDER BY display_order 
 </div>
 </body>
 </html>
-<?php $conn->close(); ?>
+<?php $conn = null; ?>

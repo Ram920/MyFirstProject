@@ -10,20 +10,20 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
 
 if (isset($_POST['id']) && isset($_POST['status'])) {
     $id = (int)$_POST['id'];
-    $status = $conn->real_escape_string($_POST['status']);
+    $status = trim($_POST['status']);
     
     // Validate status to prevent injection
     $allowed_statuses = ['New', 'Contacted', 'Quoted', 'Closed'];
     if (in_array($status, $allowed_statuses)) {
-        $stmt = $conn->prepare("UPDATE enquiries SET status = ? WHERE id = ?");
-        $stmt->bind_param("si", $status, $id);
-        if ($stmt->execute()) {
+        $stmt = $conn->prepare("UPDATE enquiries SET status = :status WHERE id = :id");
+        if ($stmt->execute([':status' => $status, ':id' => $id])) {
             echo "Success";
         } else {
             http_response_code(500);
-            echo "Error";
+            $errorInfo = $stmt->errorInfo();
+            echo "Error: " . $errorInfo[2];
         }
-        $stmt->close();
+        $stmt = null; // Close statement
     } else {
         http_response_code(400);
         echo "Invalid status";
@@ -33,5 +33,5 @@ if (isset($_POST['id']) && isset($_POST['status'])) {
     echo "Missing parameters";
 }
 
-$conn->close();
+$conn = null; // Close connection
 ?>

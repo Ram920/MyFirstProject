@@ -22,23 +22,24 @@ if (isset($_POST['save_overtime'])) {
     $overtime_data = $_POST['overtime_pay'];
     $all_successful = true;
 
-    // Begin a transaction
-    $conn->begin_transaction();
+    $conn->beginTransaction(); // Begin a transaction
 
     try {
-        $sql = "UPDATE employees SET overtime_pay = ? WHERE id = ?";
+        $sql = "UPDATE employees SET overtime_pay = :amount WHERE id = :id";
         $stmt = $conn->prepare($sql);
 
         foreach ($overtime_data as $employee_id => $amount) {
             $amount = (float)($amount ?? 0.00);
             $emp_id = (int)$employee_id;
-            $stmt->bind_param("di", $amount, $emp_id);
-            if (!$stmt->execute()) {
+            
+            if (!$stmt->execute([':amount' => $amount, ':id' => $emp_id])) {
                 // If any update fails, mark as unsuccessful
                 $all_successful = false;
+                $errorInfo = $stmt->errorInfo();
+                error_log("Error updating overtime for employee ID {$emp_id}: " . $errorInfo[2]);
             }
         }
-        $stmt->close();
+        $stmt = null; // Close statement
 
         // If all updates were successful, commit the transaction
         if ($all_successful) {
@@ -56,7 +57,7 @@ if (isset($_POST['save_overtime'])) {
 }
 
 // Fetch all employees
-$employees = $conn->query("SELECT id, employee_id, full_name, designation, overtime_pay FROM employees ORDER BY full_name ASC");
+$employees = $conn->query("SELECT id, employee_id, full_name, designation, overtime_pay FROM employees ORDER BY full_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 ?>
 <!DOCTYPE html>
@@ -94,8 +95,8 @@ $employees = $conn->query("SELECT id, employee_id, full_name, designation, overt
                             </tr>
                         </thead>
                         <tbody>
-                            <?php while ($row = $employees->fetch_assoc()): ?>
-                                <tr>
+                            <?php foreach ($employees as $row): // Loop through fetched employees ?>
+                                <tr> 
                                     <td><?php echo htmlspecialchars($row['employee_id']); ?></td>
                                     <td><?php echo htmlspecialchars($row['full_name']); ?></td>
                                     <td><?php echo htmlspecialchars($row['designation']); ?></td>
@@ -103,7 +104,7 @@ $employees = $conn->query("SELECT id, employee_id, full_name, designation, overt
                                         <input type="number" step="0.01" name="overtime_pay[<?php echo $row['id']; ?>]" class="form-control" value="<?php echo htmlspecialchars($row['overtime_pay']); ?>">
                                     </td>
                                 </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
@@ -114,4 +115,4 @@ $employees = $conn->query("SELECT id, employee_id, full_name, designation, overt
 </div>
 </body>
 </html>
-<?php $conn->close(); ?>
+<?php $conn = null; ?>

@@ -21,17 +21,17 @@ if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
     
     // Using a transaction to ensure both bill and its items are deleted
-    $conn->begin_transaction();
+    $conn->beginTransaction();
     try {
         // The database is set up with ON DELETE CASCADE, so deleting from `bills` will also delete from `bill_items`.
-        $stmt = $conn->prepare("DELETE FROM bills WHERE id = ?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $conn->commit();
-        
+        $stmt = $conn->prepare("DELETE FROM bills WHERE id = :id");
+        $stmt->execute([':id' => $id]);
+        $stmt = null; // Close statement
+        $conn->commit(); // Commit transaction
+
         $_SESSION['flash_message'] = ['type' => 'success', 'text' => 'Bill #' . $id . ' has been deleted.'];
     } catch (Exception $e) {
-        $conn->rollback();
+        $conn->rollBack(); // Rollback on error
         $_SESSION['flash_message'] = ['type' => 'error', 'text' => 'Error deleting bill: ' . $e->getMessage()];
     }
     
@@ -39,11 +39,11 @@ if (isset($_GET['delete'])) {
     exit;
 }
 
-$bills = $conn->query("SELECT * FROM bills ORDER BY bill_date DESC, id DESC");
+$bills = $conn->query("SELECT * FROM bills ORDER BY bill_date DESC, id DESC")->fetchAll(PDO::FETCH_ASSOC);
 
 // --- Get the ID of the most recent bill to allow editing only for that one ---
-$latest_bill_result = $conn->query("SELECT MAX(id) as max_id FROM bills");
-$latest_bill_id = $latest_bill_result->fetch_assoc()['max_id'] ?? 0;
+$latest_bill_result = $conn->query("SELECT MAX(id) as max_id FROM bills")->fetch(PDO::FETCH_ASSOC);
+$latest_bill_id = $latest_bill_result['max_id'] ?? 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -86,7 +86,7 @@ $latest_bill_id = $latest_bill_result->fetch_assoc()['max_id'] ?? 0;
                     </tr>
                 </thead>
                 <tbody>
-                    <?php while ($row = $bills->fetch_assoc()): ?>
+                    <?php foreach ($bills as $row): ?>
                         <tr>
                             <td><?php echo $row['id']; ?></td>
                             <td><?php echo htmlspecialchars($row['title']); ?></td>
@@ -99,7 +99,7 @@ $latest_bill_id = $latest_bill_result->fetch_assoc()['max_id'] ?? 0;
                                 <a href="manage_bills.php?delete=<?php echo $row['id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this bill? This action cannot be undone.')">Delete</a>
                             </td>
                         </tr>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
@@ -107,4 +107,4 @@ $latest_bill_id = $latest_bill_result->fetch_assoc()['max_id'] ?? 0;
 </div>
 </body>
 </html>
-<?php $conn->close(); ?>
+<?php $conn = null; ?>

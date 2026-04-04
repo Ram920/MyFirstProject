@@ -6,6 +6,11 @@ use PHPMailer\PHPMailer\Exception;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
+// NOTE: This file currently uses dompdf for PDF generation.
+// To fully move to Supabase Edge Functions for PDF generation,
+// the Edge Function would need to return the PDF as a base64 string or a URL to a stored PDF,
+// which this PHP script would then fetch and attach.
+
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     http_response_code(403);
     exit('Access Denied');
@@ -60,16 +65,14 @@ if (isset($_POST['slip_id']) && isset($_POST['customer_email'])) {
     // --- More Detailed Error Handling ---
     try {
         // 1. Fetch Payslip Data
-        $stmt = $conn->prepare("SELECT * FROM salary_slips WHERE id = ?");
-        $stmt->bind_param("i", $slip_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($result->num_rows === 0) {
+        $stmt = $conn->prepare("SELECT * FROM salary_slips WHERE id = :id");
+        $stmt->execute([':id' => $slip_id]);
+        $slip = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$slip) {
             http_response_code(404);
             exit('Payslip not found.');
         }
-        $slip = $result->fetch_assoc();
-        $stmt->close();
+        $stmt = null;
 
         // --- Set logo to empty for email attachment ---
         $logoBase64 = '';
@@ -168,4 +171,5 @@ if (isset($_POST['slip_id']) && isset($_POST['customer_email'])) {
     http_response_code(400);
     exit('Invalid request.');
 }
+$conn = null; // Close connection
 ?>

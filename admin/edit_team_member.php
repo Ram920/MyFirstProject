@@ -49,27 +49,35 @@ if (isset($_POST['update_member'])) {
     }
 
     if (empty($message)) {
-        $stmt = $conn->prepare("UPDATE team_members SET name=?, position=?, image=?, facebook_url=?, twitter_url=?, instagram_url=?, linkedin_url=? WHERE id=?");
-        $stmt->bind_param("sssssssi", $name, $position, $image_name, $facebook_url, $twitter_url, $instagram_url, $linkedin_url, $member_id);
-        if ($stmt->execute()) {
+        $stmt = $conn->prepare("UPDATE team_members SET name=:name, position=:position, image=:image, facebook_url=:facebook_url, twitter_url=:twitter_url, instagram_url=:instagram_url, linkedin_url=:linkedin_url WHERE id=:id");
+        if ($stmt->execute([
+            ':name' => $name,
+            ':position' => $position,
+            ':image' => $image_name,
+            ':facebook_url' => $facebook_url,
+            ':twitter_url' => $twitter_url,
+            ':instagram_url' => $instagram_url,
+            ':linkedin_url' => $linkedin_url,
+            ':id' => $member_id
+        ])) {
             header("Location: manage_team.php");
             exit;
         } else {
-            $message = '<div class="alert alert-danger">Error updating member: ' . $conn->error . '</div>';
+            $errorInfo = $stmt->errorInfo();
+            $message = '<div class="alert alert-danger">Error updating member: ' . $errorInfo[2] . '</div>';
         }
     }
 }
 
 // --- Fetch Member Data ---
-$stmt = $conn->prepare("SELECT * FROM team_members WHERE id = ?");
-$stmt->bind_param("i", $member_id);
-$stmt->execute();
-$result = $stmt->get_result();
-if ($result->num_rows === 0) {
+$stmt = $conn->prepare("SELECT * FROM team_members WHERE id = :id");
+$stmt->execute([':id' => $member_id]);
+$member = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$member) {
     header("Location: manage_team.php");
     exit;
 }
-$member = $result->fetch_assoc();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -135,4 +143,4 @@ $member = $result->fetch_assoc();
 </div>
 </body>
 </html>
-<?php $conn->close(); ?>
+<?php $conn = null; ?>

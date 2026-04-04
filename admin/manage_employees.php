@@ -25,18 +25,19 @@ if (isset($_SESSION['flash_message'])) {
 // --- Handle Delete Employee ---
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
-    $stmt = $conn->prepare("DELETE FROM employees WHERE id = ?");
-    $stmt->bind_param("i", $id);
-    if ($stmt->execute()) {
+    $stmt = $conn->prepare("DELETE FROM employees WHERE id = :id");
+    if ($stmt->execute([':id' => $id])) {
         $_SESSION['flash_message'] = ['type' => 'success', 'text' => 'Employee deleted successfully!'];
     } else {
-        $_SESSION['flash_message'] = ['type' => 'danger', 'text' => 'Error deleting employee.'];
+        $errorInfo = $stmt->errorInfo();
+        $_SESSION['flash_message'] = ['type' => 'danger', 'text' => 'Error deleting employee: ' . $errorInfo[2]];
     }
+    $stmt = null; // Close statement
     header("Location: manage_employees.php");
     exit;
 }
 
-$employees = $conn->query("SELECT id, employee_id, full_name, email_address, contact_number, designation FROM employees ORDER BY full_name ASC");
+$employees = $conn->query("SELECT id, employee_id, full_name, email_address, contact_number, designation FROM employees ORDER BY full_name ASC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -76,8 +77,8 @@ $employees = $conn->query("SELECT id, employee_id, full_name, email_address, con
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if ($employees->num_rows > 0): ?>
-                            <?php while ($row = $employees->fetch_assoc()): ?>
+                        <?php if (!empty($employees)): ?>
+                            <?php foreach ($employees as $row): ?>
                                 <tr>
                                     <td><?php echo htmlspecialchars($row['employee_id']); ?></td>
                                     <td><?php echo htmlspecialchars($row['full_name']); ?></td>
@@ -89,7 +90,7 @@ $employees = $conn->query("SELECT id, employee_id, full_name, email_address, con
                                         <a href="manage_employees.php?delete=<?php echo $row['id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this employee? This action cannot be undone.')">Delete</a>
                                     </td>
                                 </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
                                 <td colspan="6" class="text-center">No employees found.</td>
@@ -103,4 +104,4 @@ $employees = $conn->query("SELECT id, employee_id, full_name, email_address, con
 </div>
 </body>
 </html>
-<?php $conn->close(); ?>
+<?php $conn = null; ?>

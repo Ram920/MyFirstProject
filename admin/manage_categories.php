@@ -20,30 +20,31 @@ require_once 'config.php'; // Include configuration
 $message = '';
 // Handle Add Category
 if (isset($_POST['add_category'])) {
-    $name = $conn->real_escape_string($_POST['name']);
-    $filter_class = $conn->real_escape_string($_POST['filter_class']);
+    $name = trim($_POST['name']);
+    $filter_class = trim($_POST['filter_class']);
     if (!empty($name) && !empty($filter_class)) {
-        $stmt = $conn->prepare("INSERT INTO categories (name, filter_class) VALUES (?, ?)");
-        $stmt->bind_param("ss", $name, $filter_class);
-        if ($stmt->execute()) {
+        $stmt = $conn->prepare("INSERT INTO categories (name, filter_class) VALUES (:name, :filter_class)");
+        if ($stmt->execute([':name' => $name, ':filter_class' => $filter_class])) {
             $message = '<div class="alert alert-success">Category added successfully!</div>';
         } else {
-            $message = '<div class="alert alert-danger">Error: ' . $conn->error . '</div>';
+            $errorInfo = $stmt->errorInfo();
+            $message = '<div class="alert alert-danger">Error: ' . $errorInfo[2] . '</div>';
         }
+        $stmt = null; // Close statement
     }
 }
 
 // Handle Delete Category
 if (isset($_GET['delete'])) {
     $id = (int)$_GET['delete'];
-    $stmt = $conn->prepare("DELETE FROM categories WHERE id = ?");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
+    $stmt = $conn->prepare("DELETE FROM categories WHERE id = :id");
+    $stmt->execute([':id' => $id]);
+    $stmt = null; // Close statement
     header("Location: manage_categories.php");
     exit;
 }
 
-$categories = $conn->query("SELECT * FROM categories ORDER BY name ASC");
+$categories = $conn->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -84,16 +85,16 @@ $categories = $conn->query("SELECT * FROM categories ORDER BY name ASC");
             <div class="card my-4">
                 <div class="card-header">Existing Categories</div>
                 <div class="card-body">
-                    <table class="table">
+                    <table class="table table-striped">
                         <thead><tr><th>Name</th><th>Filter Class</th><th>Action</th></tr></thead>
                         <tbody>
-                            <?php while ($row = $categories->fetch_assoc()): ?>
+                            <?php foreach ($categories as $row): ?>
                                 <tr>
                                     <td><?php echo htmlspecialchars($row['name']); ?></td>
                                     <td><?php echo htmlspecialchars($row['filter_class']); ?></td>
                                     <td><a href="manage_categories.php?delete=<?php echo $row['id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?')">Delete</a></td>
                                 </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
@@ -103,4 +104,4 @@ $categories = $conn->query("SELECT * FROM categories ORDER BY name ASC");
 </div>
 </body>
 </html>
-<?php $conn->close(); ?>
+<?php $conn = null; ?>

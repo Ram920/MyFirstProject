@@ -12,29 +12,31 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
 }
 $_SESSION['last_activity'] = time();
 
-require_once '../db_connect.php';
+require_once 'config.php';
+require_once __DIR__ . '/../db_connect.php';
 $page_title = "Manage Catalog";
 $message = '';
 
 // --- Handle Delete Action ---
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] == 'delete') {
     // First, get the file path from the database
-    $stmt_get = $conn->prepare("SELECT setting_value FROM site_settings WHERE setting_key = 'catalog_pdf_url'");
-    $stmt_get->execute();
-    $result = $stmt_get->get_result();
-    if ($row = $result->fetch_assoc()) {
+    $stmt_get = $conn->prepare("SELECT setting_value FROM site_settings WHERE setting_key = :key");
+    $stmt_get->execute([':key' => 'catalog_pdf_url']);
+    $row = $stmt_get->fetch(PDO::FETCH_ASSOC);
+
+    if ($row) {
         $file_path = '../' . $row['setting_value'];
         // Delete the file from the server if it exists
         if (file_exists($file_path)) {
             unlink($file_path);
         }
     }
-    $stmt_get->close();
+    $stmt_get = null; // Close statement
 
     // Then, delete the record from the database
-    $stmt_delete = $conn->prepare("DELETE FROM site_settings WHERE setting_key = 'catalog_pdf_url'");
-    $stmt_delete->execute();
-    $stmt_delete->close();
+    $stmt_delete = $conn->prepare("DELETE FROM site_settings WHERE setting_key = :key");
+    $stmt_delete->execute([':key' => 'catalog_pdf_url']);
+    $stmt_delete = null; // Close statement
     $message = '<div class="alert alert-success">The catalog has been successfully deleted.</div>';
 }
 elseif ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES["catalog_pdf"])) { // --- Handle File Upload ---
@@ -63,15 +65,15 @@ elseif ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES["catalog_pdf"])) {
                 $file_url = "assets/catalog/" . basename($target_file);
 
                 // Save the file path to the database
-                $stmt = $conn->prepare("INSERT INTO site_settings (setting_key, setting_value) VALUES ('catalog_pdf_url', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
-                $stmt->bind_param("ss", $file_url, $file_url);
+                $stmt = $conn->prepare("INSERT INTO site_settings (setting_key, setting_value) VALUES ('catalog_pdf_url', :file_url) ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value");
                 
-                if ($stmt->execute()) {
+                if ($stmt->execute([':file_url' => $file_url])) {
                     $message = '<div class="alert alert-success">The catalog has been uploaded successfully.</div>';
                 } else {
-                    $message = '<div class="alert alert-danger">File uploaded, but failed to update the database.</div>';
+                    $errorInfo = $stmt->errorInfo();
+                    $message = '<div class="alert alert-danger">File uploaded, but failed to update the database: ' . $errorInfo[2] . '</div>';
                 }
-                $stmt->close();
+                $stmt = null; // Close statement
             } else {
                 $message = '<div class="alert alert-danger">Sorry, there was an error uploading your file.</div>';
             }
@@ -81,15 +83,14 @@ elseif ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES["catalog_pdf"])) {
 
 // Fetch the current catalog URL to display
 $current_catalog_url = '';
-$stmt_get = $conn->prepare("SELECT setting_value FROM site_settings WHERE setting_key = ?");
-$setting_key = 'catalog_pdf_url';
-$stmt_get->bind_param("s", $setting_key);
-$stmt_get->execute();
-$result = $stmt_get->get_result();
-if ($row = $result->fetch_assoc()) {
+$stmt_get = $conn->prepare("SELECT setting_value FROM site_settings WHERE setting_key = :key");
+$stmt_get->execute([':key' => 'catalog_pdf_url']);
+$row = $stmt_get->fetch(PDO::FETCH_ASSOC);
+
+if ($row) {
     $current_catalog_url = $row['setting_value'];
 }
-$stmt_get->close();
+$stmt_get = null; // Close statement
 
 ?>
 <!DOCTYPE html>
@@ -157,63 +158,3 @@ $stmt_get->close();
 
 </body>
 </html>
-<?php $conn->close(); ?>
-
-```
-**Note:** You will also need to add a link to this new `manage_catalog.php` page in your admin navigation (e.g., in `admin/includes/header.php`) so you can access it easily.
-
-### Step 2: Add the Catalog Section to Your Website
-
-Now, let's modify your `index.php` file to display the new "Our Catalog" section. This will fetch the catalog link from the database and show a download button if a catalog has been uploaded.
-
-```diff
---- a/Users/ramnarayansharma/github_nush/MyFirstProject/index.php
-+++ b/Users/ramnarayansharma/github_nush/MyFirstProject/index.php
-@@ -28,6 +28,9 @@
- 
-   $team_members_result = $conn->query("SELECT * FROM team_members ORDER BY display_order ASC, id ASC");
- 
-+  $catalog_pdf_result = $conn->query("SELECT setting_value FROM site_settings WHERE setting_key = 'catalog_pdf_url'");
-+  $catalog_pdf_url = $catalog_pdf_result->fetch_assoc()['setting_value'] ?? '';
-+
-   // Do NOT close the connection here. It will be closed later in the script.
- ?>
- <!DOCTYPE html>
-@@ -350,6 +353,24 @@
- 
-       </div>
-     </section><!-- End Services Section -->
-+
-+    <!-- ======= Catalog Section ======= -->
-+    <?php if (!empty($catalog_pdf_url)): ?>
-+    <section id="catalog" class="catalog">
-+      <div class="container" data-aos="fade-up">
-+
-+        <div class="section-title">
-+          <h2>Catalog</h2>
-+          <p>Download Our Catalog</p>
-+        </div>
-+
-+        <div class="row">
-+          <div class="col-md-12 text-center">
-+            <p>Get detailed information about all our products and services by downloading our complete catalog.</p>
-+            <a href="<?php echo htmlspecialchars($catalog_pdf_url); ?>" class="btn-get-started" download>Download Catalog (PDF)</a>
-+          </div>
-+        </div>
-+
-+      </div>
-+    </section>
-+    <?php endif; ?>
-+    <!-- End Catalog Section -->
- 
-     <!-- ======= Testimonials Section ======= -->
-     <section id="testimonials" class="testimonials">
-
-```
-
-After applying these changes and uploading a PDF through the new admin page, a "Download Our Catalog" section will appear on your website.
-
-Let me know if you have any other questions!<!--
-[PROMPT_SUGGESTION]How can I add the new "Catalog" section to the main navigation menu?[/PROMPT_SUGGESTION]
-[PROMPT_SUGGESTION]Can you help me secure the admin folder?[/PROMPT_SUGGESTION]
--->

@@ -21,45 +21,108 @@ $message = '';
 if (isset($_POST['finalize_salaries'])) {
     $slip_month = (int)date('m');
     $slip_year = (int)date('Y');
-    $employees_to_process = $conn->query("SELECT * FROM employees");
+    $employees_to_process = $conn->query("SELECT * FROM employees")->fetchAll(PDO::FETCH_ASSOC);
     $slips_generated = 0;
     $slips_skipped = 0;
 
-    while ($emp = $employees_to_process->fetch_assoc()) {
-        // Check if a slip for this employee and month already exists
-        $check_stmt = $conn->prepare("SELECT id FROM salary_slips WHERE employee_db_id = ? AND slip_month = ? AND slip_year = ?");
-        $check_stmt->bind_param("iii", $emp['id'], $slip_month, $slip_year);
-        $check_stmt->execute();
-        $result = $check_stmt->get_result();
+    try {
+        $conn->beginTransaction(); // Start transaction for atomicity
 
-        if ($result->num_rows > 0) {
-            $slips_skipped++;
-            continue; // Skip if already generated
+        foreach ($employees_to_process as $emp) {
+            // Check if a slip for this employee and month already exists
+            $check_stmt = $conn->prepare("SELECT id FROM salary_slips WHERE employee_db_id = :employee_id AND slip_month = :month AND slip_year = :year");
+            $check_stmt->execute([':employee_id' => $emp['id'], ':month' => $slip_month, ':year' => $slip_year]);
+            $existing_slip = $check_stmt->fetch();
+
+            if ($existing_slip) {
+                $slips_skipped++;
+                continue; // Skip if already generated for this month/year
+            }
+
+            // Calculations
+            $gross_earnings = (float)$emp['basic_salary'] + (float)$emp['hra'] + (float)$emp['transport_allowance'] + (float)$emp['medical_allowance'] + (float)$emp['special_allowance'] + (float)$emp['overtime_pay'] + (float)$emp['bonus'];
+            $total_deductions = (float)$emp['deduction_pf'] + (float)$emp['deduction_esi'] + (float)$emp['deduction_pt'] + (float)$emp['deduction_tds'] + (float)$emp['deduction_loan'];
+            $net_salary = $gross_earnings - $total_deductions;
+
+            // Prepare insert statement
+            // Using PostgreSQL ON CONFLICT DO UPDATE for upsert functionality
+            $insert_stmt = $conn->prepare("
+                INSERT INTO salary_slips (
+                    employee_db_id, slip_month, slip_year, employee_id_str, full_name, designation, 
+                    pan_card, uan_number, esi_number, bank_name, bank_account_number, pay_cycle, 
+                    basic_salary, hra, transport_allowance, medical_allowance, special_allowance, 
+                    overtime_pay, bonus, deduction_pf, deduction_esi, deduction_pt, deduction_tds, 
+                    deduction_loan, gross_earnings, total_deductions, net_salary
+                ) VALUES (
+                    :employee_db_id, :slip_month, :slip_year, :employee_id_str, :full_name, :designation, 
+                    :pan_card, :uan_number, :esi_number, :bank_name, :bank_account_number, :pay_cycle, 
+                    :basic_salary, :hra, :transport_allowance, :medical_allowance, :special_allowance, 
+                    :overtime_pay, :bonus, :deduction_pf, :deduction_esi, :deduction_pt, :deduction_tds, 
+                    :deduction_loan, :gross_earnings, :total_deductions, :net_salary
+                ) ON CONFLICT (employee_db_id, slip_month, slip_year) DO UPDATE SET
+                    employee_id_str = EXCLUDED.employee_id_str,
+                    full_name = EXCLUDED.full_name,
+                    designation = EXCLUDED.designation,
+                    pan_card = EXCLUDED.pan_card,
+                    uan_number = EXCLUDED.uan_number,
+                    esi_number = EXCLUDED.esi_number,
+                    bank_name = EXCLUDED.bank_name,
+                    bank_account_number = EXCLUDED.bank_account_number,
+                    pay_cycle = EXCLUDED.pay_cycle,
+                    basic_salary = EXCLUDED.basic_salary, hra = EXCLUDED.hra, transport_allowance = EXCLUDED.transport_allowance,
+                    medical_allowance = EXCLUDED.medical_allowance, special_allowance = EXCLUDED.special_allowance, overtime_pay = EXCLUDED.overtime_pay,
+                    bonus = EXCLUDED.bonus, deduction_pf = EXCLUDED.deduction_pf, deduction_esi = EXCLUDED.deduction_esi,
+                    deduction_pt = EXCLUDED.deduction_pt, deduction_tds = EXCLUDED.deduction_tds, deduction_loan = EXCLUDED.deduction_loan,
+                    gross_earnings = EXCLUDED.gross_earnings, total_deductions = EXCLUDED.total_deductions, net_salary = EXCLUDED.net_salary
+            "); // Removed unsupported emulation option
+            
+            $insert_stmt->execute([
+                ':employee_db_id' => $emp['id'],
+                ':slip_month' => $slip_month,
+                ':slip_year' => $slip_year,
+                ':employee_id_str' => $emp['employee_id'],
+                ':full_name' => $emp['full_name'],
+                ':designation' => $emp['designation'],
+                ':pan_card' => $emp['pan_card'],
+                ':uan_number' => $emp['uan_number'],
+                ':esi_number' => $emp['esi_number'],
+                ':bank_name' => $emp['bank_name'],
+                ':bank_account_number' => $emp['bank_account_number'],
+                ':pay_cycle' => $emp['pay_cycle'],
+                ':basic_salary' => $emp['basic_salary'],
+                ':hra' => $emp['hra'],
+                ':transport_allowance' => $emp['transport_allowance'],
+                ':medical_allowance' => $emp['medical_allowance'],
+                ':special_allowance' => $emp['special_allowance'],
+                ':overtime_pay' => $emp['overtime_pay'],
+                ':bonus' => $emp['bonus'],
+                ':deduction_pf' => $emp['deduction_pf'],
+                ':deduction_esi' => $emp['deduction_esi'],
+                ':deduction_pt' => $emp['deduction_pt'],
+                ':deduction_tds' => $emp['deduction_tds'],
+                ':deduction_loan' => $emp['deduction_loan'],
+                ':gross_earnings' => $gross_earnings,
+                ':total_deductions' => $total_deductions,
+                ':net_salary' => $net_salary
+            ]);
+
+            if ($insert_stmt->rowCount() > 0) {
+                $slips_generated++;
+            }
         }
 
-        // Calculations
-        $gross_earnings = (float)$emp['basic_salary'] + (float)$emp['hra'] + (float)$emp['transport_allowance'] + (float)$emp['medical_allowance'] + (float)$emp['special_allowance'] + (float)$emp['overtime_pay'] + (float)$emp['bonus'];
-        $total_deductions = (float)$emp['deduction_pf'] + (float)$emp['deduction_esi'] + (float)$emp['deduction_pt'] + (float)$emp['deduction_tds'] + (float)$emp['deduction_loan'];
-        $net_salary = $gross_earnings - $total_deductions;
-
-        // Prepare insert statement
-        $insert_stmt = $conn->prepare("INSERT INTO salary_slips (employee_db_id, slip_month, slip_year, employee_id_str, full_name, designation, pan_card, uan_number, esi_number, bank_name, bank_account_number, pay_cycle, basic_salary, hra, transport_allowance, medical_allowance, special_allowance, overtime_pay, bonus, deduction_pf, deduction_esi, deduction_pt, deduction_tds, deduction_loan, gross_earnings, total_deductions, net_salary) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        
-        $insert_stmt->bind_param("iiisssssssssddddddddddddddd", $emp['id'], $slip_month, $slip_year, $emp['employee_id'], $emp['full_name'], $emp['designation'], $emp['pan_card'], $emp['uan_number'], $emp['esi_number'], $emp['bank_name'], $emp['bank_account_number'], $emp['pay_cycle'], $emp['basic_salary'], $emp['hra'], $emp['transport_allowance'], $emp['medical_allowance'], $emp['special_allowance'], $emp['overtime_pay'], $emp['bonus'], $emp['deduction_pf'], $emp['deduction_esi'], $emp['deduction_pt'], $emp['deduction_tds'], $emp['deduction_loan'], $gross_earnings, $total_deductions, $net_salary);
-
-        if ($insert_stmt->execute()) {
-            $slips_generated++;
-        }
+        $conn->commit(); // Commit transaction
+        $message = '<div class="alert alert-success">Payroll processing complete for ' . date('F Y') . '.<br>' . $slips_generated . ' new payslips were generated.<br>' . $slips_skipped . ' employees were skipped as their payslips for this month already exist.</div>';
+    } catch (Exception $e) {
+        $conn->rollBack(); // Rollback on error to maintain data integrity
+        $message = '<div class="alert alert-danger">Error finalizing salaries: ' . $e->getMessage() . '</div>';
     }
-
-    $message = '<div class="alert alert-success">Payroll processing complete for ' . date('F Y') . '.<br>' . $slips_generated . ' new payslips were generated.<br>' . $slips_skipped . ' employees were skipped as their payslips for this month already exist.</div>';
 }
 
 // --- Fetch data for display ---
-// Fetch all employees for the current salary overview
 $employees_result = $conn->query("SELECT * FROM employees ORDER BY full_name ASC");
+$employees = $employees_result->fetchAll(PDO::FETCH_ASSOC);
 
-// Fetch generated slips for a quick overview
 $generated_slips_result = $conn->query("
     SELECT ss.id, ss.slip_month, ss.slip_year, e.full_name 
     FROM salary_slips ss 
@@ -69,11 +132,10 @@ $generated_slips_result = $conn->query("
 
 // Group slips by month for easier management
 $slips_by_month = [];
-if ($generated_slips_result->num_rows > 0) {
-    while ($slip = $generated_slips_result->fetch_assoc()) {
-        $month_year_key = $slip['slip_year'] . '-' . str_pad($slip['slip_month'], 2, '0', STR_PAD_LEFT);
-        $slips_by_month[$month_year_key][] = $slip;
-    }
+$all_slips = $generated_slips_result->fetchAll(PDO::FETCH_ASSOC);
+foreach ($all_slips as $slip) {
+    $month_year_key = $slip['slip_year'] . '-' . str_pad($slip['slip_month'], 2, '0', STR_PAD_LEFT);
+    $slips_by_month[$month_year_key][] = $slip;
 }
 
 ?>
@@ -123,8 +185,8 @@ if ($generated_slips_result->num_rows > 0) {
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if ($employees_result->num_rows > 0): ?>
-                            <?php while ($emp = $employees_result->fetch_assoc()): ?>
+                        <?php if (!empty($employees)): ?>
+                            <?php foreach ($employees as $emp): ?>
                                 <?php
                                     // Calculations
                                     $gross_earnings = (float)$emp['basic_salary']
@@ -154,7 +216,7 @@ if ($generated_slips_result->num_rows > 0) {
                                         <a href="edit_employee.php?id=<?php echo $emp['id']; ?>" class="btn btn-info btn-sm">Edit Salary</a>
                                     </td>
                                 </tr>
-                            <?php endwhile; ?>
+                            <?php endforeach; ?>
                         <?php else: ?>
                             <tr>
                                 <td colspan="7" class="text-center">No employees found. Please add an employee first.</td>
@@ -207,4 +269,4 @@ if ($generated_slips_result->num_rows > 0) {
 </body>
 
 </html>
-<?php $conn->close(); ?>
+<?php $conn = null; ?>

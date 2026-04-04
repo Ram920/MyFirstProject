@@ -16,17 +16,16 @@ if ($slip_id <= 0) {
 
 // Join with employees table to get the email address
 $stmt = $conn->prepare("
-    SELECT ss.*, e.email_address 
+    SELECT ss.*, e.email_address
     FROM salary_slips ss
     JOIN employees e ON ss.employee_db_id = e.id
-    WHERE ss.id = ?");
-$stmt->bind_param("i", $slip_id);
-$stmt->execute();
-$result = $stmt->get_result();
-if ($result->num_rows === 0) {
+    WHERE ss.id = :slip_id"); // Use named parameter for consistency
+$stmt->execute([':slip_id' => $slip_id]);
+$slip = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$slip) {
     exit('Payslip not found.');
 }
-$slip = $result->fetch_assoc();
 
 // --- Prepare Logo Data as Base64 ---
 $logoBase64 = '';
@@ -134,9 +133,10 @@ if ($for_pdf) { ob_start(); } // Start output buffering if for PDF
     });
     </script>
 <?php endif; // End if (!$for_pdf) ?>
-
-<?php if ($for_pdf) { echo ob_get_clean(); exit; } // End output buffering and exit if for PDF ?>
+<?php // End output buffering and exit if for PDF
+if ($for_pdf) { echo ob_get_clean(); exit; }
+?>
 
 </body>
 </html>
-<?php $conn->close(); ?>
+<?php $conn = null; ?>

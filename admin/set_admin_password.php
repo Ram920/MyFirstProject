@@ -14,34 +14,34 @@ $new_password = 'admin';   // <-- CHANGE THIS to your desired plain-text passwor
 $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
 
 // Check if the admin user already exists
-$stmt = $conn->prepare("SELECT id FROM admin_users WHERE username = ?");
-$stmt->bind_param("s", $admin_username);
-$stmt->execute();
-$result = $stmt->get_result();
+$stmt = $conn->prepare("SELECT id FROM admin_users WHERE username = :username");
+$stmt->execute([':username' => $admin_username]);
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
+$stmt = null; // Close statement
 
-if ($result->num_rows > 0) {
+if ($user) {
     // User exists, update password
-    $stmt_update = $conn->prepare("UPDATE admin_users SET password_hash = ? WHERE username = ?");
-    $stmt_update->bind_param("ss", $hashed_password, $admin_username);
-    if ($stmt_update->execute()) {
+    $stmt_update = $conn->prepare("UPDATE admin_users SET password_hash = :password_hash WHERE username = :username");
+    if ($stmt_update->execute([':password_hash' => $hashed_password, ':username' => $admin_username])) {
         echo "<h1>Admin password for '{$admin_username}' updated successfully in the database!</h1>";
     } else {
-        echo "<h1>Error updating admin password: " . $conn->error . "</h1>";
+        $errorInfo = $stmt_update->errorInfo();
+        echo "<h1>Error updating admin password: " . $errorInfo[2] . "</h1>";
     }
-    $stmt_update->close();
+    $stmt_update = null; // Close statement
 } else {
     // User does not exist, insert new user
-    $stmt_insert = $conn->prepare("INSERT INTO admin_users (username, password_hash) VALUES (?, ?)");
-    $stmt_insert->bind_param("ss", $admin_username, $hashed_password);
-    if ($stmt_insert->execute()) {
+    $stmt_insert = $conn->prepare("INSERT INTO admin_users (username, password_hash) VALUES (:username, :password_hash)");
+    if ($stmt_insert->execute([':username' => $admin_username, ':password_hash' => $hashed_password])) {
         echo "<h1>Admin user '{$admin_username}' created successfully with hashed password!</h1>";
     } else {
-        echo "<h1>Error creating admin user: " . $conn->error . "</h1>";
+        $errorInfo = $stmt_insert->errorInfo();
+        echo "<h1>Error creating admin user: " . $errorInfo[2] . "</h1>";
     }
-    $stmt_insert->close();
+    $stmt_insert = null; // Close statement
 }
 
-$conn->close();
+$conn = null;
 
 echo "<p style='color: red; font-weight: bold;'>IMPORTANT: For security, delete this file (<code>admin/set_admin_password.php</code>) from your server immediately after you have set the password.</p>";
 ?>

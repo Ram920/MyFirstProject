@@ -19,16 +19,13 @@ $message = '';
 // --- Function to generate the next Employee ID ---
 function generateNextEmployeeId($conn) {
     $prefix = 'NUSH-';
-    $sql = "SELECT employee_id FROM employees WHERE employee_id LIKE ? ORDER BY CAST(SUBSTRING(employee_id, " . (strlen($prefix) + 1) . ") AS UNSIGNED) DESC, employee_id DESC LIMIT 1";
-    
-    $stmt = $conn->prepare($sql);
-    $likePrefix = $prefix . '%';
-    $stmt->bind_param("s", $likePrefix);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $stmt = $conn->prepare("SELECT employee_id FROM employees WHERE employee_id LIKE :prefix ORDER BY CAST(SUBSTRING(employee_id, " . (strlen($prefix) + 1) . ") AS INTEGER) DESC, employee_id DESC LIMIT 1");
+    $stmt->execute([':prefix' => $prefix . '%']);
+    $lastIdRow = $stmt->fetch(PDO::FETCH_ASSOC);
+    $stmt = null; // Close statement
 
-    if ($result->num_rows > 0) {
-        $lastId = $result->fetch_assoc()['employee_id'];
+    if ($lastIdRow) {
+        $lastId = $lastIdRow['employee_id'];
         $number = (int)substr($lastId, strlen($prefix));
         $nextNumber = $number + 1;
     } else {
@@ -41,83 +38,68 @@ function generateNextEmployeeId($conn) {
 // --- Handle Add Employee ---
 if (isset($_POST['add_employee'])) {
     // Prepare an insert statement
-    $sql = "INSERT INTO employees (employee_id, date_of_joining, date_of_leaving, designation, work_location, full_name, date_of_birth, gender, contact_number, pan_card, aadhar_number, email_address, permanent_address, current_address, emergency_contact_name, emergency_contact_relation, emergency_contact_number, basic_salary, hra, transport_allowance, medical_allowance, special_allowance, overtime_pay, deduction_pf, deduction_esi, deduction_pt, deduction_tds, deduction_loan, bonus, bank_name, bank_account_number, bank_ifsc_code, pay_cycle, uan_number, esi_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO employees (employee_id, date_of_joining, date_of_leaving, designation, work_location, full_name, date_of_birth, gender, contact_number, pan_card, aadhar_number, email_address, permanent_address, current_address, emergency_contact_name, emergency_contact_relation, emergency_contact_number, basic_salary, hra, transport_allowance, medical_allowance, special_allowance, overtime_pay, deduction_pf, deduction_esi, deduction_pt, deduction_tds, deduction_loan, bonus, bank_name, bank_account_number, bank_ifsc_code, pay_cycle, uan_number, esi_number) VALUES (:employee_id, :doj, :dol, :designation, :work_location, :full_name, :dob, :gender, :contact, :pan, :aadhar, :email, :perm_address, :curr_address, :emergency_name, :emergency_relation, :emergency_number, :basic_salary, :hra, :transport_allowance, :medical_allowance, :special_allowance, :overtime_pay, :deduction_pf, :deduction_esi, :deduction_pt, :deduction_tds, :deduction_loan, :bonus, :bank_name, :bank_account_number, :bank_ifsc_code, :pay_cycle, :uan_number, :esi_number)";
 
-    if ($stmt = $conn->prepare($sql)) {
-        // Bind variables to the prepared statement as parameters
-        // Set parameters that might be null
-        $doj = !empty($_POST['date_of_joining']) ? trim($_POST['date_of_joining']) : null;
+    $stmt = $conn->prepare($sql);
+    if ($stmt) {
+        $doj = !empty($_POST['date_of_joining']) ? trim($_POST['date_of_joining']) : null; // Set parameters that might be null
         $dol = !empty($_POST['date_of_leaving']) ? trim($_POST['date_of_leaving']) : null;
         $dob = !empty($_POST['date_of_birth']) ? trim($_POST['date_of_birth']) : null;
 
-        $stmt->bind_param(
-    "sssssssssssssssssddddddddddddssssss",
-    $employee_id, $doj, $dol, $designation, $work_location,
-    $full_name, $dob, $gender, $contact, $pan, $aadhar, $email,
-    $perm_address, $curr_address, $emergency_name, $emergency_relation,
-    $emergency_number,
-    $basic_salary, $hra, $transport_allowance, $medical_allowance,
-    $special_allowance, $overtime_pay, $deduction_pf, $deduction_esi,
-    $deduction_pt, $deduction_tds, $deduction_loan, $bonus,
-    $bank_name, $bank_account_number, $bank_ifsc_code,
-    $pay_cycle, $uan_number, $esi_number
-);
-
-
-        // Set parameters
-        $employee_id = strtoupper(trim($_POST['employee_id']));
-        $designation = strtoupper(trim($_POST['designation']));
-        $work_location = strtoupper(trim($_POST['work_location']));
-
-        $full_name = strtoupper(trim($_POST['full_name']));
-        $gender = strtoupper(trim($_POST['gender']));
-        $contact = trim($_POST['contact_number']);
-        $pan = strtoupper(trim($_POST['pan_card']));
-        $aadhar = trim($_POST['aadhar_number']);
-        $email = trim($_POST['email_address']);
-        $perm_address = strtoupper(trim($_POST['permanent_address']));
-        $curr_address = strtoupper(trim($_POST['current_address']));
-        $emergency_name = strtoupper(trim($_POST['emergency_contact_name']));
-        $emergency_relation = strtoupper(trim($_POST['emergency_contact_relation']));
-        $emergency_number = trim($_POST['emergency_contact_number']);
-
-        // Salary & Compensation
-        $basic_salary = (float)($_POST['basic_salary'] ?? 0.00);
-        $hra = (float)($_POST['hra'] ?? 0.00);
-        $transport_allowance = (float)($_POST['transport_allowance'] ?? 0.00);
-        $medical_allowance = (float)($_POST['medical_allowance'] ?? 0.00);
-        $special_allowance = (float)($_POST['special_allowance'] ?? 0.00);
-        $overtime_pay = (float)($_POST['overtime_pay'] ?? 0.00);
-        $deduction_pf = (float)($_POST['deduction_pf'] ?? 0.00);
-        $deduction_esi = (float)($_POST['deduction_esi'] ?? 0.00);
-        $deduction_pt = (float)($_POST['deduction_pt'] ?? 0.00);
-        $deduction_tds = (float)($_POST['deduction_tds'] ?? 0.00);
-        $deduction_loan = (float)($_POST['deduction_loan'] ?? 0.00);
-        $bonus = (float)($_POST['bonus'] ?? 0.00);
-        $bank_name = strtoupper(trim($_POST['bank_name']));
-        $bank_account_number = trim($_POST['bank_account_number']);
-        $bank_ifsc_code = strtoupper(trim($_POST['bank_ifsc_code']));
-        $pay_cycle = strtoupper(trim($_POST['pay_cycle']));
-        $uan_number = strtoupper(trim($_POST['uan_number']));
-        $esi_number = trim($_POST['esi_number']);
-
-        // Attempt to execute the prepared statement
-        if ($stmt->execute()) {
+        if ($stmt->execute([
+            ':employee_id' => strtoupper(trim($_POST['employee_id'])),
+            ':doj' => $doj,
+            ':dol' => $dol,
+            ':designation' => strtoupper(trim($_POST['designation'])),
+            ':work_location' => strtoupper(trim($_POST['work_location'])),
+            ':full_name' => strtoupper(trim($_POST['full_name'])),
+            ':dob' => $dob,
+            ':gender' => strtoupper(trim($_POST['gender'])),
+            ':contact' => trim($_POST['contact_number']),
+            ':pan' => strtoupper(trim($_POST['pan_card'])),
+            ':aadhar' => trim($_POST['aadhar_number']),
+            ':email' => trim($_POST['email_address']),
+            ':perm_address' => strtoupper(trim($_POST['permanent_address'])),
+            ':curr_address' => strtoupper(trim($_POST['current_address'])),
+            ':emergency_name' => strtoupper(trim($_POST['emergency_contact_name'])),
+            ':emergency_relation' => strtoupper(trim($_POST['emergency_contact_relation'])),
+            ':emergency_number' => trim($_POST['emergency_contact_number']),
+            ':basic_salary' => (float)($_POST['basic_salary'] ?? 0.00),
+            ':hra' => (float)($_POST['hra'] ?? 0.00),
+            ':transport_allowance' => (float)($_POST['transport_allowance'] ?? 0.00),
+            ':medical_allowance' => (float)($_POST['medical_allowance'] ?? 0.00),
+            ':special_allowance' => (float)($_POST['special_allowance'] ?? 0.00),
+            ':overtime_pay' => (float)($_POST['overtime_pay'] ?? 0.00),
+            ':deduction_pf' => (float)($_POST['deduction_pf'] ?? 0.00),
+            ':deduction_esi' => (float)($_POST['deduction_esi'] ?? 0.00),
+            ':deduction_pt' => (float)($_POST['deduction_pt'] ?? 0.00),
+            ':deduction_tds' => (float)($_POST['deduction_tds'] ?? 0.00),
+            ':deduction_loan' => (float)($_POST['deduction_loan'] ?? 0.00),
+            ':bonus' => (float)($_POST['bonus'] ?? 0.00),
+            ':bank_name' => strtoupper(trim($_POST['bank_name'])),
+            ':bank_account_number' => trim($_POST['bank_account_number']),
+            ':bank_ifsc_code' => strtoupper(trim($_POST['bank_ifsc_code'])),
+            ':pay_cycle' => strtoupper(trim($_POST['pay_cycle'])),
+            ':uan_number' => strtoupper(trim($_POST['uan_number'])),
+            ':esi_number' => trim($_POST['esi_number'])
+        ])) {
             $_SESSION['flash_message'] = ['type' => 'success', 'text' => 'Employee added successfully!'];
             header("location: manage_employees.php");
             exit();
         } else {
             // Check for duplicate entry
-            if ($conn->errno == 1062) {
-                 $message = '<div class="alert alert-danger">Error: An employee with this Employee ID, PAN, Aadhar, or Email already exists.</div>';
+            // Note: This assumes the 'employee_id', 'pan_card', 'aadhar_number', 'email_address' columns have UNIQUE constraints. (PostgreSQL unique violation error code is 23505)
+            $errorInfo = $stmt->errorInfo();
+            if ($errorInfo[0] === '23505') { // PostgreSQL unique violation error code
+                $message = '<div class="alert alert-danger">Error: An employee with this Employee ID, PAN, Aadhar, or Email already exists.</div>';
             } else {
-                 $message = '<div class="alert alert-danger">Oops! Something went wrong. Please try again later.</div>';
+                $message = '<div class="alert alert-danger">Oops! Something went wrong: ' . $errorInfo[2] . '</div>';
             }
         }
-        $stmt->close();
     } else {
         // Error preparing statement
-        $message = '<div class="alert alert-danger">Error preparing the database statement: ' . htmlspecialchars($conn->error) . '</div>';
+        $errorInfo = $conn->errorInfo();
+        $message = '<div class="alert alert-danger">Error preparing the database statement: ' . htmlspecialchars($errorInfo[2]) . '</div>';
     }
 }
 
@@ -339,7 +321,7 @@ $new_employee_id = generateNextEmployeeId($conn);
     </div>
 </div>
 <script>
-document.getElementById('downloadPdfBtn').addEventListener('click', function () {
+document.getElementById('downloadPdfBtn').addEventListener('click', function() {
     const companyName = document.getElementById('company-name').textContent.trim();
 
     const openPreview = () => {
@@ -418,8 +400,6 @@ document.getElementById('downloadPdfBtn').addEventListener('click', function () 
     openPreview();
 });
 </script>
-<?php
-$conn->close();
-?>
+<?php $conn = null; ?>
 </body>
 </html>

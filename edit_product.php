@@ -27,10 +27,11 @@ if ($product_id <= 0) {
 
 // --- Handle Product Update ---
 if (isset($_POST['update_product'])) {
-    $name = $conn->real_escape_string($_POST['name']);
-    $category = $conn->real_escape_string($_POST['category']);
-    $description = $conn->real_escape_string($_POST['description']);
-    $current_image = $conn->real_escape_string($_POST['current_image']);
+    $name = trim($_POST['name']);
+    $category = trim($_POST['category']);
+    $description = trim($_POST['description']);
+    $current_image = trim($_POST['current_image']);
+    $catalog_url = isset($_POST['current_catalog_url']) ? trim($_POST['current_catalog_url']) : '';
 
     $image_name = $current_image;
 
@@ -54,30 +55,45 @@ if (isset($_POST['update_product'])) {
         }
     }
 
+    // --- Check if a new catalog PDF is uploaded to Supabase ---
+    if (isset($_FILES['catalog_pdf']) && $_FILES['catalog_pdf']['error'] == UPLOAD_ERR_OK) {
+        $pdf_name = 'product_catalogs/' . time() . '_' . basename($_FILES['catalog_pdf']['name']); // Store in a subfolder
+        $uploaded_url = uploadToSupabase($_FILES['catalog_pdf']['tmp_name'], $pdf_name);
+        if ($uploaded_url) {
+            $catalog_url = $uploaded_url;
+        }
+    }
+
     if (empty($message)) {
-        $stmt = $conn->prepare("UPDATE products SET name = ?, category = ?, description = ?, image = ? WHERE id = ?");
-        $stmt->bind_param("ssssi", $name, $category, $description, $image_name, $product_id);
-        if ($stmt->execute()) {
+        $stmt = $conn->prepare("UPDATE products SET name = :name, category = :category, description = :description, image = :image, catalog_url = :catalog_url WHERE id = :id");
+        if ($stmt->execute([
+            ':name' => $name,
+            ':category' => $category,
+            ':description' => $description,
+            ':image' => $image_name,
+            ':catalog_url' => $catalog_url,
+            ':id' => $product_id
+        ])) {
             // Redirect to the main admin page to see the changes
             header("Location: manage_products.php?update=success");
             exit;
         } else {
-            $message = '<div class="alert alert-danger">Error updating product: ' . $conn->error . '</div>';
+            $errorInfo = $stmt->errorInfo();
+            $message = '<div class="alert alert-danger">Error updating product: ' . $errorInfo[2] . '</div>';
         }
+        $stmt = null; // Close statement
     }
 }
 
 // --- Fetch Product Data for the Form ---
 $stmt = $conn->prepare("SELECT * FROM products WHERE id = ?");
-$stmt->bind_param("i", $product_id);
-$stmt->execute();
-$result = $stmt->get_result();
-if ($result->num_rows > 0) {
-    $product = $result->fetch_assoc();
-} else {
+$stmt->execute([$product_id]);
+$product = $stmt->fetch(PDO::FETCH_ASSOC);
+$stmt = null;
+if (!$product) {
     // If product not found, redirect
     header("Location: manage_products.php");
-    $conn->close();
+    $conn = null;
     exit;
 }
 ?>
@@ -101,19 +117,30 @@ if ($result->num_rows > 0) {
         <div class="card-body">
             <form action="edit_product.php?id=<?php echo $product_id; ?>" method="post" enctype="multipart/form-data">
                 <input type="hidden" name="current_image" value="<?php echo htmlspecialchars($product['image']); ?>">
+                <input type="hidden" name="current_catalog_url" value="<?php echo htmlspecialchars($product['catalog_url']); ?>">
                 
                 <div class="form-group"><label>Product Name:</label><input type="text" name="name" class="form-control" value="<?php echo htmlspecialchars($product['name']); ?>" required></div>
                 <div class="form-group">
                     <label for="category">Category:</label>
                     <select name="category" id="category" class="form-control" required>
-                        <?php 
-                        $categories = $conn->query("SELECT * FROM categories ORDER BY name ASC");
-                        while ($cat = $categories->fetch_assoc()): ?>
+                        <?php // Fetch categories using PDO
+                        $categories = $conn->query("SELECT * FROM categories ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+                        foreach ($categories as $cat): ?>
                             <option value="<?php echo htmlspecialchars($cat['filter_class']); ?>" <?php if ($product['category'] == $cat['filter_class']) echo 'selected'; ?>><?php echo htmlspecialchars($cat['name']); ?></option>
-                        <?php endwhile; ?>
+                        <?php endforeach; ?>
                     </select>
                 </div>
                 <div class="form-group"><label>Description:</label><textarea name="description" class="form-control"><?php echo htmlspecialchars($product['description']); ?></textarea></div>
+                
+                <div class="form-group">
+                    <label>Current Catalog PDF:</label><br>
+                    <?php if (!empty($product['catalog_url'])): ?>
+                        <a href="<?php echo htmlspecialchars($product['catalog_url']); ?>" target="_blank" class="btn btn-sm btn-info mb-2">View Existing PDF</a>
+                    <?php else: ?>
+                        <span class="text-muted">No catalog uploaded.</span>
+                    <?php endif; ?>
+                </div>
+                <div class="form-group"><label>Upload New Catalog PDF (Optional):</label><input type="file" name="catalog_pdf" class="form-control-file" accept=".pdf"></div>
                 
                 <div class="form-group">
                     <label>Current Image:</label><br>
@@ -129,4 +156,4 @@ if ($result->num_rows > 0) {
 </div>
 </body>
 </html>
-<?php $conn->close(); ?>
+<?php $conn = null; ?>
